@@ -1,4 +1,4 @@
--- watershed 0.1.0 by paramat
+-- watershed 0.1.1 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
@@ -7,58 +7,59 @@
 
 local YMIN = 6000
 local YMAX = 8000
-local TERCEN = 7000 -- Terrain centre
-local YWAT = 7256 -- Sea level
+local TERCEN = 7008 -- Terrain centre
+local YWAT = 7024 -- Sea level
 local TERSCA = 512 -- Vertical terrain scale
 local TSTONE = 0.02 -- Density threshold for stone
-local RINAMP = 0.5 -- Ridge noise amplitude
-local RIDEXP = 1.2 -- Ridge exponent, controls sharpness of ridges
-local TRIV = -0.08 -- Ridge density threshold for river water at sea level
-local TEREXP = 0.8 -- Terrain exponent, controls shape of river canyons
-local TERAMP = 0.5 -- Terrain amplitude relative to ridge
+local TDIRT = 0.01 -- Density threshold for dirt
+local BASAMP = 0.5 -- Base terrain amplitude
+local BASEXP = 0.8 -- Base terrain exponent
+local CANAMP = 0.5 -- Canyon terrain amplitude
+local TRIV = -0.012 -- Maximum densitybase threshold for river water
+local TSAND = -0.015 -- Maximum densitybase threshold for sand
 
 -- 3D noise for rough terrain
 
-local np_terrough = {
+local np_rough = {
 	offset = 0,
 	scale = 1,
-	spread = {x=414, y=414, z=414},
-	seed = 5900033,
+	spread = {x=512, y=512, z=512},
+	seed = 593,
 	octaves = 6,
 	persist = 0.6
 }
 
 -- 3D noise for smooth terrain
 
-local np_terrsmoo = {
+local np_smooth = {
 	offset = 0,
 	scale = 1,
-	spread = {x=414, y=414, z=414},
-	seed = 5900033,
+	spread = {x=512, y=512, z=512},
+	seed = 593,
 	octaves = 6,
 	persist = 0.4
 }
 
--- 3D noise for ridge noise
+-- 2D noise for base terrain / riverbed height, terrain blend, river and river sand depth
 
-local np_terridge = {
+local np_base = {
 	offset = 0,
 	scale = 1,
-	spread = {x=1024, y=1024, z=1024},
-	seed = -4747,
+	spread = {x=4096, y=4096, z=4096},
+	seed = 8890,
 	octaves = 3,
-	persist = 0.4
+	persist = 0.5
 }
 
--- 2D noise for ranges and terrain blend
+-- 2D noise for biomes
 
-local np_range = {
+local np_biome = {
 	offset = 0,
 	scale = 1,
-	spread = {x=2048, y=2048, z=2048}, -- spread is still stated with xyz values
-	seed = -188900,
-	octaves = 2,
-	persist = 0.4
+	spread = {x=2048, y=2048, z=2048},
+	seed = -677772,
+	octaves = 3,
+	persist = 0.5
 }
 
 -- Stuff
@@ -66,6 +67,24 @@ local np_range = {
 watershed = {}
 
 -- Nodes
+
+minetest.register_node("watershed:grass", {
+	description = "WS Grass",
+	tiles = {"default_grass.png", "default_dirt.png", "default_grass.png"},
+	is_ground_content = false,
+	groups = {crumbly=3,soil=1},
+	drop = "default:dirt",
+	sounds = default.node_sound_dirt_defaults({
+		footstep = {name="default_grass_footstep", gain=0.25},
+	}),
+})
+
+minetest.register_node("watershed:redstone", {
+	description = "WS Red Stone",
+	tiles = {"default_desert_stone.png"},
+	groups = {cracky=3},
+	sounds = default.node_sound_stone_defaults(),
+})
 
 minetest.register_node("watershed:stone", {
 	description = "WS Stone",
@@ -95,7 +114,7 @@ minetest.register_node("watershed:water", {
 	liquid_alternative_source = "watershed:water",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 1,
+	liquid_range = 3,
 	post_effect_color = {a=64, r=100, g=100, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1},
 })
@@ -132,7 +151,7 @@ minetest.register_node("watershed:waterflow", {
 	liquid_alternative_source = "watershed:water",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 1,
+	liquid_range = 3,
 	post_effect_color = {a=64, r=100, g=100, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1, not_in_creative_inventory=1},
 })
@@ -159,21 +178,27 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local data = vm:get_data()
 	
 	local c_air = minetest.get_content_id("air")
-	local c_wsstone = minetest.get_content_id("watershed:stone")
-	local c_sand = minetest.get_content_id("default:sand")
-	local c_wswater = minetest.get_content_id("watershed:water")
 	local c_water = minetest.get_content_id("default:water_source")
+	local c_sand = minetest.get_content_id("default:sand")
+	local c_desand = minetest.get_content_id("default:desert_sand")
+	local c_snowblock = minetest.get_content_id("default:snowblock")
+	local c_dirt = minetest.get_content_id("default:dirt")
+	
+	local c_wswater = minetest.get_content_id("watershed:water")
+	local c_wsstone = minetest.get_content_id("watershed:stone")
+	local c_wsredstone = minetest.get_content_id("watershed:redstone")
+	local c_wsgrass = minetest.get_content_id("watershed:grass")
 	
 	local sidelen = x1 - x0 + 1
 	local chulens = {x=sidelen, y=sidelen, z=sidelen}
 	local minposxyz = {x=x0, y=y0, z=z0}
 	local minposxz = {x=x0, y=z0}
 	
-	local nvals_terrough = minetest.get_perlin_map(np_terrough, chulens):get3dMap_flat(minposxyz)
-	local nvals_terrsmoo = minetest.get_perlin_map(np_terrsmoo, chulens):get3dMap_flat(minposxyz)
-	local nvals_terridge = minetest.get_perlin_map(np_terridge, chulens):get3dMap_flat(minposxyz)
+	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
+	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
 	
-	local nvals_range = minetest.get_perlin_map(np_range, chulens):get2dMap_flat(minposxz)
+	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
+	local nvals_biome = minetest.get_perlin_map(np_biome, chulens):get2dMap_flat(minposxz)
 	
 	local nixyz = 1
 	local nixz = 1
@@ -193,22 +218,44 @@ minetest.register_on_generated(function(minp, maxp, seed)
 			local vi = area:index(x0, y, z)
 			for x = x0, x1 do -- for each node do
 				local si = x - x0 + 1
-				local ridge = 1 - math.abs(nvals_range[nixz]) ^ RIDEXP + nvals_terridge[nixyz] * RINAMP
 				local grad = (TERCEN - y) / TERSCA
-				local denridge = ridge + grad
-				local terblen = math.max((1 - math.abs(nvals_range[nixz])), 0)
+				local n_base = nvals_base[nixz]
+				local terblen = math.max(1 - math.abs(n_base) ^ BASEXP, 0)
+				local densitybase = terblen * BASAMP
+				+ grad
 				local triv = TRIV * (1 - terblen)
-				local density = ridge + grad
-				+ math.abs(nvals_terrough[nixyz] * terblen + nvals_terrsmoo[nixyz] * (1 - terblen)) ^ TEREXP * TERAMP
-				if density >= TSTONE then
-					data[vi] = c_wsstone
+				local tsand = TSAND * (1 - terblen)
+				local tstone = TSTONE -- by height not terblen
+				local canexp = 1.2
+				local density = densitybase
+				+ math.abs(nvals_rough[nixyz] * terblen + nvals_smooth[nixyz] * (1 - terblen)) ^ canexp * CANAMP
+				local n_biome = nvals_biome[nixz]
+				
+				if density >= tstone then -- stone
+					if n_biome > 0.5 then
+						data[vi] = c_wsredstone
+					else
+						data[vi] = c_wsstone
+					end
 					stable[si] = stable[si] + 1
-				elseif density >= 0 and density < TSTONE and stable[si] >= 2 then
-					data[vi] = c_sand
+				elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
+					if densitybase >= tsand or y <= YWAT + math.random(3) then
+						data[vi] = c_sand -- riverbed, seabed
+					else
+						if n_biome > 0.5 then
+							data[vi] = c_desand
+						elseif density > TDIRT then
+							data[vi] = c_dirt
+						elseif n_biome < -0.5 then
+							data[vi] = c_snowblock
+						else
+							data[vi] = c_wsgrass
+						end
+					end
 				elseif y <= YWAT then -- sea level water
 					data[vi] = c_water
 					stable[si] = 0
-				elseif denridge >= triv then -- river water
+				elseif densitybase >= triv then -- river water
 					data[vi] = c_wswater
 					stable[si] = 0
 				else
@@ -229,5 +276,5 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	vm:calc_lighting()
 	vm:write_to_map(data)
 	local chugent = math.ceil((os.clock() - t1) * 1000)
-	print ("[noise23] "..chugent.." ms")
+	print ("[watershed] "..chugent.." ms")
 end)
