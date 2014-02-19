@@ -1,7 +1,11 @@
--- watershed 0.1.1 by paramat
+-- watershed 0.2.0 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
+
+-- TODO
+-- Faults and strata
+-- Arctan gradient?
 
 -- Parameters
 
@@ -9,14 +13,22 @@ local YMIN = 6000
 local YMAX = 8000
 local TERCEN = 7008 -- Terrain centre
 local YWAT = 7024 -- Sea level
-local TERSCA = 512 -- Vertical terrain scale
+local TERSCA = 384 -- Vertical terrain scale
+local BASAMP = 0.3 -- Base terrain amplitude
+local CANAMP = 0.7 -- Canyon terrain amplitude
+local CANEXP = 1.33 -- Canyon shape exponent
 local TSTONE = 0.02 -- Density threshold for stone
 local TDIRT = 0.01 -- Density threshold for dirt
-local BASAMP = 0.5 -- Base terrain amplitude
-local BASEXP = 0.8 -- Base terrain exponent
-local CANAMP = 0.5 -- Canyon terrain amplitude
-local TRIV = -0.012 -- Maximum densitybase threshold for river water
-local TSAND = -0.015 -- Maximum densitybase threshold for sand
+local TRIV = -0.016 -- Maximum densitybase threshold for river water
+local TSAND = -0.02 -- Maximum densitybase threshold for sand
+
+local PINCHA = 47
+local APTCHA = 47
+local FLOCHA = 36
+local FOGCHA = 9
+local GRACHA = 5
+local JUTCHA = 16
+local JUGCHA = 9
 
 -- 3D noise for rough terrain
 
@@ -26,7 +38,7 @@ local np_rough = {
 	spread = {x=512, y=512, z=512},
 	seed = 593,
 	octaves = 6,
-	persist = 0.6
+	persist = 0.63
 }
 
 -- 3D noise for smooth terrain
@@ -40,15 +52,15 @@ local np_smooth = {
 	persist = 0.4
 }
 
--- 2D noise for base terrain / riverbed height, terrain blend, river and river sand depth
+-- 2D noise for base terrain / riverbed height / mountain ranges, terrain blend, river and river sand depth
 
 local np_base = {
 	offset = 0,
 	scale = 1,
 	spread = {x=4096, y=4096, z=4096},
 	seed = 8890,
-	octaves = 3,
-	persist = 0.5
+	octaves = 4,
+	persist = 0.4
 }
 
 -- 2D noise for biomes
@@ -56,7 +68,7 @@ local np_base = {
 local np_biome = {
 	offset = 0,
 	scale = 1,
-	spread = {x=2048, y=2048, z=2048},
+	spread = {x=512, y=512, z=512},
 	seed = -677772,
 	octaves = 3,
 	persist = 0.5
@@ -66,95 +78,8 @@ local np_biome = {
 
 watershed = {}
 
--- Nodes
-
-minetest.register_node("watershed:grass", {
-	description = "WS Grass",
-	tiles = {"default_grass.png", "default_dirt.png", "default_grass.png"},
-	is_ground_content = false,
-	groups = {crumbly=3,soil=1},
-	drop = "default:dirt",
-	sounds = default.node_sound_dirt_defaults({
-		footstep = {name="default_grass_footstep", gain=0.25},
-	}),
-})
-
-minetest.register_node("watershed:redstone", {
-	description = "WS Red Stone",
-	tiles = {"default_desert_stone.png"},
-	groups = {cracky=3},
-	sounds = default.node_sound_stone_defaults(),
-})
-
-minetest.register_node("watershed:stone", {
-	description = "WS Stone",
-	tiles = {"default_stone.png"},
-	groups = {cracky=3},
-	sounds = default.node_sound_stone_defaults(),
-})
-
-minetest.register_node("watershed:water", {
-	description = "WS Water Source",
-	inventory_image = minetest.inventorycube("default_water.png"),
-	drawtype = "liquid",
-	tiles = {
-		{name="default_water_source_animated.png", animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=2.0}}
-	},
-	alpha = WATER_ALPHA,
-	paramtype = "light",
-	is_ground_content = false,
-	walkable = false,
-	pointable = false,
-	diggable = false,
-	buildable_to = true,
-	drop = "",
-	drowning = 1,
-	liquidtype = "source",
-	liquid_alternative_flowing = "watershed:waterflow",
-	liquid_alternative_source = "watershed:water",
-	liquid_viscosity = WATER_VISC,
-	liquid_renewable = false,
-	liquid_range = 3,
-	post_effect_color = {a=64, r=100, g=100, b=200},
-	groups = {water=3, liquid=3, puts_out_fire=1},
-})
-
-minetest.register_node("watershed:waterflow", {
-	description = "WS Flowing Water",
-	inventory_image = minetest.inventorycube("default_water.png"),
-	drawtype = "flowingliquid",
-	tiles = {"default_water.png"},
-	special_tiles = {
-		{
-			image="default_water_flowing_animated.png",
-			backface_culling=false,
-			animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=0.8}
-		},
-		{
-			image="default_water_flowing_animated.png",
-			backface_culling=true,
-			animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=0.8}
-		},
-	},
-	alpha = WATER_ALPHA,
-	paramtype = "light",
-	paramtype2 = "flowingliquid",
-	is_ground_content = false,
-	walkable = false,
-	pointable = false,
-	diggable = false,
-	buildable_to = true,
-	drop = "",
-	drowning = 1,
-	liquidtype = "flowing",
-	liquid_alternative_flowing = "watershed:waterflow",
-	liquid_alternative_source = "watershed:water",
-	liquid_viscosity = WATER_VISC,
-	liquid_renewable = false,
-	liquid_range = 3,
-	post_effect_color = {a=64, r=100, g=100, b=200},
-	groups = {water=3, liquid=3, puts_out_fire=1, not_in_creative_inventory=1},
-})
+dofile(minetest.get_modpath("watershed").."/nodes.lua")
+dofile(minetest.get_modpath("watershed").."/functions.lua")
 
 -- On generated function
 
@@ -183,6 +108,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_desand = minetest.get_content_id("default:desert_sand")
 	local c_snowblock = minetest.get_content_id("default:snowblock")
 	local c_dirt = minetest.get_content_id("default:dirt")
+	local c_dirtsnow = minetest.get_content_id("default:dirt_with_snow")
+	local c_jungrass = minetest.get_content_id("default:junglegrass")
 	
 	local c_wswater = minetest.get_content_id("watershed:water")
 	local c_wsstone = minetest.get_content_id("watershed:stone")
@@ -203,9 +130,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local nixyz = 1
 	local nixz = 1
 	local stable = {}
+	local under = {}
 	for z = z0, z1 do -- for each xy plane progressing northwards
 		for x = x0, x1 do
 			local si = x - x0 + 1
+			under[si] = 0
 			local nodename = minetest.get_node({x=x,y=y0-1,z=z}).name
 			if nodename == "air"
 			or nodename == "default:water_source" then
@@ -216,19 +145,19 @@ minetest.register_on_generated(function(minp, maxp, seed)
 		end
 		for y = y0, y1 do -- for each x row progressing upwards
 			local vi = area:index(x0, y, z)
+			local viu = area:index(x0, y-1, z)
 			for x = x0, x1 do -- for each node do
 				local si = x - x0 + 1
 				local grad = (TERCEN - y) / TERSCA
 				local n_base = nvals_base[nixz]
-				local terblen = math.max(1 - math.abs(n_base) ^ BASEXP, 0)
+				local terblen = 1 - math.abs(n_base)
 				local densitybase = terblen * BASAMP
 				+ grad
-				local triv = TRIV * (1 - terblen)
-				local tsand = TSAND * (1 - terblen)
-				local tstone = TSTONE -- by height not terblen
-				local canexp = 1.2
+				local triv = TRIV * (1 - terblen * 1.1) -- 1.1 river disappears before ridge top
+				local tsand = TSAND * (1 - terblen * 1.1)
+				local tstone = TSTONE * (1 + grad * 1.5)
 				local density = densitybase
-				+ math.abs(nvals_rough[nixyz] * terblen + nvals_smooth[nixyz] * (1 - terblen)) ^ canexp * CANAMP
+				+ math.abs(nvals_rough[nixyz] * terblen + nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
 				local n_biome = nvals_biome[nixz]
 				
 				if density >= tstone then -- stone
@@ -239,32 +168,80 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					end
 					stable[si] = stable[si] + 1
 				elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
-					if densitybase >= tsand or y <= YWAT + math.random(3) then
+					if densitybase >= tsand or y <= YWAT + 1 + math.random(2) then
 						data[vi] = c_sand -- riverbed, seabed
 					else
-						if n_biome > 0.5 then
+						if n_biome > 0.7 then
 							data[vi] = c_desand
-						elseif density > TDIRT then
+							under[si] = 5 -- desert
+						elseif n_biome > 0.2 then
 							data[vi] = c_dirt
-						elseif n_biome < -0.5 then
-							data[vi] = c_snowblock
+							under[si] = 4 -- rainforest
+						elseif n_biome > -0.2 then
+							data[vi] = c_dirt
+							under[si] = 3 -- grassland
+						elseif n_biome > -0.7 then
+							data[vi] = c_dirt
+							under[si] = 2 -- forest
 						else
-							data[vi] = c_wsgrass
+							data[vi] = c_dirt
+							under[si] = 1 -- taiga
 						end
 					end
 				elseif y <= YWAT then -- sea level water
 					data[vi] = c_water
 					stable[si] = 0
+					under[si] = 0
 				elseif densitybase >= triv then -- river water
 					data[vi] = c_wswater
 					stable[si] = 0
-				else
-					data[vi] = c_air
+					under[si] = 0
+				else -- possible above surface air node
+					if y >= YWAT and under[si] ~= 0 then
+						if under[si] == 1 then
+							if trees and math.random(PINCHA) == 2 then
+								watershed_pinetree(x, y, z, area, data)
+							else
+								data[viu] = c_dirtsnow
+								data[vi] = c_snowblock
+							end
+						elseif under[si] == 2 then -- surface node turned to grass
+							if trees and math.random(APTCHA) == 2 then
+								watershed_appletree(x, y, z, area, data)
+							elseif math.random(FLOCHA) == 2 then
+								data[viu] = c_wsgrass
+								watershed_flower(data, vi)
+							elseif math.random(FOGCHA) == 2 then
+								data[viu] = c_wsgrass
+								watershed_grass(data, vi)
+							end
+						elseif under[si] == 3 then
+							data[viu] = c_wsgrass
+							if math.random(GRACHA) == 2 then
+								if math.random(3) == 2 then
+									watershed_grass(data, vi)
+								else
+									data[vi] = c_jungrass
+								end
+							end
+						elseif under[si] == 4 then
+							if math.random(JUTCHA) == 2 then
+								watershed_jungletree(x, y, z, area, data)
+							else
+								data[viu] = c_wsgrass
+								if math.random(JUGCHA) == 2 then
+									data[vi] = c_jungrass
+								end
+							end
+						end
+					end
 					stable[si] = 0
+					under[si] = 0
 				end
 				nixyz = nixyz + 1 -- increment 3D noise index
 				nixz = nixz + 1 -- increment 2D noise index
 				vi = vi + 1
+				viu = viu + 1
 			end
 			nixz = nixz - 80 -- rewind 2D noise index by 80 nodes for next x row above
 		end
