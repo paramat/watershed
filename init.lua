@@ -1,4 +1,4 @@
--- watershed 0.2.1 by paramat
+-- watershed 0.2.2 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
@@ -8,8 +8,8 @@
 local YMIN = 6000
 local YMAX = 8000 -- Top of atmosphere / mountains / floatlands
 local TERCEN = 7008 -- Terrain centre
-local YWAT = 7104 -- Sea level
-local TERSCA = 512 -- Vertical terrain scale
+local YWAT = 7024 -- Sea level
+local TERSCA = 384 -- Vertical terrain scale
 local XLSAMP = 0 -- Extra large scale height variation amplitude
 local BASAMP = 0.3 -- Base terrain amplitude
 local CANAMP = 0.7 -- Canyon terrain amplitude
@@ -17,14 +17,17 @@ local CANEXP = 1.33 -- Canyon shape exponent
 local TSTONE = 0.015 -- Density threshold for stone
 local TRIV = -0.027 -- Maximum densitybase threshold for river water
 local TSAND = -0.03 -- Maximum densitybase threshold for sand
+local FIST = 0 -- Fissure threshold at surface. Controls size of fissure entrances at surface
+local FISEXP = 0.02 -- Fissure expansion rate under surface
+local ORECHA = 1 / (7 * 7 * 7) -- Ore chance per stone node
 
-local PINCHA = 47
-local APTCHA = 47
-local FLOCHA = 36
-local FOGCHA = 9
-local GRACHA = 5
-local JUTCHA = 16
-local JUGCHA = 9
+local PINCHA = 47 -- Pine tree 1/x chance per node
+local APTCHA = 47 -- Appletree
+local FLOCHA = 36 -- Flower
+local FOGCHA = 9 -- Forest grass
+local GRACHA = 5 -- Grassland grasses
+local JUTCHA = 16 -- Jungletree
+local JUGCHA = 9 -- Junglegrass
 
 -- 3D noise for rough terrain
 
@@ -33,17 +36,6 @@ local np_rough = {
 	scale = 1,
 	spread = {x=512, y=512, z=512},
 	seed = 593,
-	octaves = 6,
-	persist = 0.63
-}
-
--- 3D alt noise for rough terrain
-
-local np_roughalt = {
-	offset = 0,
-	scale = 1,
-	spread = {x=828, y=828, z=828},
-	seed = -7,
 	octaves = 6,
 	persist = 0.63
 }
@@ -59,15 +51,15 @@ local np_smooth = {
 	persist = 0.4
 }
 
--- 3D alt noise for smooth terrain
+-- 3D noise for fissures
 
-local np_smoothalt = {
+local np_fissure = {
 	offset = 0,
 	scale = 1,
-	spread = {x=828, y=828, z=828},
-	seed = -7,
-	octaves = 6,
-	persist = 0.4
+	spread = {x=256, y=512, z=256},
+	seed = 20099,
+	octaves = 5,
+	persist = 0.5
 }
 
 -- 2D noise for base terrain / riverbed height / mountain ranges, terrain blend, river and river sand depth
@@ -138,6 +130,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_snowblock = minetest.get_content_id("default:snowblock")
 	local c_dirtsnow = minetest.get_content_id("default:dirt_with_snow")
 	local c_jungrass = minetest.get_content_id("default:junglegrass")
+	local c_stodiam = minetest.get_content_id("default:stone_with_diamond")
+	local c_stomese = minetest.get_content_id("default:stone_with_mese")
+	local c_stogold = minetest.get_content_id("default:stone_with_gold")
+	local c_stocopp = minetest.get_content_id("default:stone_with_copper")
+	local c_stoiron = minetest.get_content_id("default:stone_with_iron")
+	local c_stocoal = minetest.get_content_id("default:stone_with_coal")
 	
 	local c_wswater = minetest.get_content_id("watershed:water")
 	local c_wsstone = minetest.get_content_id("watershed:stone")
@@ -152,8 +150,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
-	local nvals_roughalt = minetest.get_perlin_map(np_roughalt, chulens):get3dMap_flat(minposxyz)
-	local nvals_smoothalt = minetest.get_perlin_map(np_smoothalt, chulens):get3dMap_flat(minposxyz)
+	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
 	
 	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 	local nvals_biome = minetest.get_perlin_map(np_biome, chulens):get2dMap_flat(minposxz)
@@ -188,22 +185,43 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local triv = TRIV * (1 - terblen * 1.1) -- 1.1 river disappears before ridge top
 				local tsand = TSAND * (1 - terblen * 1.1)
 				local tstone = TSTONE * (1 + grad * 1.5)
-				local density = densitybase + math.abs(
-					(nvals_rough[nixyz] + nvals_roughalt[nixyz]) / 2 * terblen
-					+ (nvals_smooth[nixyz] + nvals_smoothalt[nixyz]) / 2 * (1 - terblen)
-				) ^ CANEXP * CANAMP
+				local density = densitybase
+				+ math.abs(nvals_rough[nixyz] * terblen + nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
 				
-				if density >= tstone then -- stone
+				local nofis = false
+				if density >= 0 then -- if terrain set fissure flag
+					if math.abs(nvals_fissure[nixyz]) > FIST + math.sqrt(density) * FISEXP then
+						nofis = true
+					end
+				end
+				
+				if density >= tstone and nofis  -- stone cut by fissures
+				or (density >= tstone and density < TSTONE * 2 and y <= YWAT) then -- or stone layer around water
 					if n_biome > 0.7 then
 						data[vi] = c_wsredstone
+					elseif math.random() < ORECHA then
+						local osel = math.random(34)
+						if osel == 34 then
+							data[vi] = c_stodiam
+						elseif osel >= 31 then
+							data[vi] = c_stomese
+						elseif osel >= 28 then
+							data[vi] = c_stogold
+						elseif osel >= 19 then
+							data[vi] = c_stocopp
+						elseif osel >= 10 then
+							data[vi] = c_stoiron
+						else
+							data[vi] = c_stocoal
+						end
 					else
 						data[vi] = c_wsstone
 					end
 					stable[si] = stable[si] + 1
 				elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
-					if densitybase >= tsand or y <= YWAT + 1 + math.random(2) then
-						data[vi] = c_sand -- riverbed, seabed
-					else
+					if densitybase >= tsand or y <= YWAT + 1 + math.random(2) then -- river / seabed not cut by fissures
+						data[vi] = c_sand
+					elseif nofis then -- fine materials cut by fissures
 						if n_biome > 0.7 then
 							data[vi] = c_desand
 							under[si] = 5 -- desert
@@ -220,12 +238,15 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							data[vi] = c_wsdirt
 							under[si] = 1 -- taiga
 						end
+					else -- fissure
+						stable[si] = 0
+						under[si] = 0
 					end
-				elseif y <= YWAT then -- sea level water
+				elseif y <= YWAT and density < tstone then -- sea water, not in fissures
 					data[vi] = c_water
 					stable[si] = 0
 					under[si] = 0
-				elseif densitybase >= triv then -- river water
+				elseif densitybase >= triv and density < tstone then -- river water, not in fissures
 					data[vi] = c_wswater
 					stable[si] = 0
 					under[si] = 0
