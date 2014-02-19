@@ -1,6 +1,6 @@
 minetest.register_node("watershed:needles", {
 	description = "WS Pine Needles",
-	tiles = {"paragen_needles.png"},
+	tiles = {"watershed_needles.png"},
 	is_ground_content = false,
 	groups = {snappy=3, leafdecay=3},
 	sounds = default.node_sound_leaves_defaults(),
@@ -15,6 +15,15 @@ minetest.register_node("watershed:jungleleaf", {
 	is_ground_content = false,
 	groups = {snappy=3, leafdecay=4, flammable=2, leaves=1},
 	sounds = default.node_sound_leaves_defaults(),
+})
+
+minetest.register_node("watershed:dirt", {
+	description = "WS Dirt",
+	tiles = {"default_dirt.png"},
+	is_ground_content = false,
+	groups = {crumbly=3,soil=1},
+	drop = "default:dirt",
+	sounds = default.node_sound_dirt_defaults(),
 })
 
 minetest.register_node("watershed:grass", {
@@ -63,7 +72,7 @@ minetest.register_node("watershed:water", {
 	liquid_alternative_source = "watershed:water",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 3,
+	liquid_range = 4,
 	post_effect_color = {a=64, r=100, g=100, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1},
 })
@@ -100,7 +109,7 @@ minetest.register_node("watershed:waterflow", {
 	liquid_alternative_source = "watershed:water",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 3,
+	liquid_range = 4,
 	post_effect_color = {a=64, r=100, g=100, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1, not_in_creative_inventory=1},
 })

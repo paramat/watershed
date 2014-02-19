@@ -1,26 +1,22 @@
--- watershed 0.2.0 by paramat
+-- watershed 0.2.1 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- TODO
--- Faults and strata
--- Arctan gradient?
-
 -- Parameters
 
 local YMIN = 6000
-local YMAX = 8000
+local YMAX = 8000 -- Top of atmosphere / mountains / floatlands
 local TERCEN = 7008 -- Terrain centre
-local YWAT = 7024 -- Sea level
-local TERSCA = 384 -- Vertical terrain scale
+local YWAT = 7104 -- Sea level
+local TERSCA = 512 -- Vertical terrain scale
+local XLSAMP = 0 -- Extra large scale height variation amplitude
 local BASAMP = 0.3 -- Base terrain amplitude
 local CANAMP = 0.7 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
-local TSTONE = 0.02 -- Density threshold for stone
-local TDIRT = 0.01 -- Density threshold for dirt
-local TRIV = -0.016 -- Maximum densitybase threshold for river water
-local TSAND = -0.02 -- Maximum densitybase threshold for sand
+local TSTONE = 0.015 -- Density threshold for stone
+local TRIV = -0.027 -- Maximum densitybase threshold for river water
+local TSAND = -0.03 -- Maximum densitybase threshold for sand
 
 local PINCHA = 47
 local APTCHA = 47
@@ -41,6 +37,17 @@ local np_rough = {
 	persist = 0.63
 }
 
+-- 3D alt noise for rough terrain
+
+local np_roughalt = {
+	offset = 0,
+	scale = 1,
+	spread = {x=828, y=828, z=828},
+	seed = -7,
+	octaves = 6,
+	persist = 0.63
+}
+
 -- 3D noise for smooth terrain
 
 local np_smooth = {
@@ -48,6 +55,17 @@ local np_smooth = {
 	scale = 1,
 	spread = {x=512, y=512, z=512},
 	seed = 593,
+	octaves = 6,
+	persist = 0.4
+}
+
+-- 3D alt noise for smooth terrain
+
+local np_smoothalt = {
+	offset = 0,
+	scale = 1,
+	spread = {x=828, y=828, z=828},
+	seed = -7,
 	octaves = 6,
 	persist = 0.4
 }
@@ -72,6 +90,17 @@ local np_biome = {
 	seed = -677772,
 	octaves = 3,
 	persist = 0.5
+}
+
+-- 2D noise for extra large scale height variation
+
+local np_xlscale = {
+	offset = 0,
+	scale = 1,
+	spread = {x=8192, y=8192, z=8192},
+	seed = -72,
+	octaves = 3,
+	persist = 0.4
 }
 
 -- Stuff
@@ -107,7 +136,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_sand = minetest.get_content_id("default:sand")
 	local c_desand = minetest.get_content_id("default:desert_sand")
 	local c_snowblock = minetest.get_content_id("default:snowblock")
-	local c_dirt = minetest.get_content_id("default:dirt")
 	local c_dirtsnow = minetest.get_content_id("default:dirt_with_snow")
 	local c_jungrass = minetest.get_content_id("default:junglegrass")
 	
@@ -115,6 +143,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wsstone = minetest.get_content_id("watershed:stone")
 	local c_wsredstone = minetest.get_content_id("watershed:redstone")
 	local c_wsgrass = minetest.get_content_id("watershed:grass")
+	local c_wsdirt = minetest.get_content_id("watershed:dirt")
 	
 	local sidelen = x1 - x0 + 1
 	local chulens = {x=sidelen, y=sidelen, z=sidelen}
@@ -123,9 +152,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
+	local nvals_roughalt = minetest.get_perlin_map(np_roughalt, chulens):get3dMap_flat(minposxyz)
+	local nvals_smoothalt = minetest.get_perlin_map(np_smoothalt, chulens):get3dMap_flat(minposxyz)
 	
 	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 	local nvals_biome = minetest.get_perlin_map(np_biome, chulens):get2dMap_flat(minposxz)
+	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
 	
 	local nixyz = 1
 	local nixz = 1
@@ -150,18 +182,19 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local si = x - x0 + 1
 				local grad = (TERCEN - y) / TERSCA
 				local n_base = nvals_base[nixz]
+				local n_biome = nvals_biome[nixz]
 				local terblen = 1 - math.abs(n_base)
-				local densitybase = terblen * BASAMP
-				+ grad
+				local densitybase = terblen * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
 				local triv = TRIV * (1 - terblen * 1.1) -- 1.1 river disappears before ridge top
 				local tsand = TSAND * (1 - terblen * 1.1)
 				local tstone = TSTONE * (1 + grad * 1.5)
-				local density = densitybase
-				+ math.abs(nvals_rough[nixyz] * terblen + nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
-				local n_biome = nvals_biome[nixz]
+				local density = densitybase + math.abs(
+					(nvals_rough[nixyz] + nvals_roughalt[nixyz]) / 2 * terblen
+					+ (nvals_smooth[nixyz] + nvals_smoothalt[nixyz]) / 2 * (1 - terblen)
+				) ^ CANEXP * CANAMP
 				
 				if density >= tstone then -- stone
-					if n_biome > 0.5 then
+					if n_biome > 0.7 then
 						data[vi] = c_wsredstone
 					else
 						data[vi] = c_wsstone
@@ -175,16 +208,16 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							data[vi] = c_desand
 							under[si] = 5 -- desert
 						elseif n_biome > 0.2 then
-							data[vi] = c_dirt
+							data[vi] = c_wsdirt
 							under[si] = 4 -- rainforest
 						elseif n_biome > -0.2 then
-							data[vi] = c_dirt
+							data[vi] = c_wsdirt
 							under[si] = 3 -- grassland
 						elseif n_biome > -0.7 then
-							data[vi] = c_dirt
+							data[vi] = c_wsdirt
 							under[si] = 2 -- forest
 						else
-							data[vi] = c_dirt
+							data[vi] = c_wsdirt
 							under[si] = 1 -- taiga
 						end
 					end
@@ -199,21 +232,24 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				else -- possible above surface air node
 					if y >= YWAT and under[si] ~= 0 then
 						if under[si] == 1 then
-							if trees and math.random(PINCHA) == 2 then
+							if math.random(PINCHA) == 2 then
 								watershed_pinetree(x, y, z, area, data)
 							else
 								data[viu] = c_dirtsnow
 								data[vi] = c_snowblock
 							end
-						elseif under[si] == 2 then -- surface node turned to grass
-							if trees and math.random(APTCHA) == 2 then
+						elseif under[si] == 2 then
+							if math.random(APTCHA) == 2 then
 								watershed_appletree(x, y, z, area, data)
-							elseif math.random(FLOCHA) == 2 then
+							else
 								data[viu] = c_wsgrass
-								watershed_flower(data, vi)
-							elseif math.random(FOGCHA) == 2 then
-								data[viu] = c_wsgrass
-								watershed_grass(data, vi)
+								if math.random(FLOCHA) == 2 then
+									data[viu] = c_wsgrass
+									watershed_flower(data, vi)
+								elseif math.random(FOGCHA) == 2 then
+									data[viu] = c_wsgrass
+									watershed_grass(data, vi)
+								end
 							end
 						elseif under[si] == 3 then
 							data[viu] = c_wsgrass
@@ -238,14 +274,14 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					stable[si] = 0
 					under[si] = 0
 				end
-				nixyz = nixyz + 1 -- increment 3D noise index
-				nixz = nixz + 1 -- increment 2D noise index
+				nixyz = nixyz + 1
+				nixz = nixz + 1
 				vi = vi + 1
 				viu = viu + 1
 			end
-			nixz = nixz - 80 -- rewind 2D noise index by 80 nodes for next x row above
+			nixz = nixz - 80
 		end
-		nixz = nixz + 80 -- fast-forward 2D noise index by 80 nodes for next northward xy plane
+		nixz = nixz + 80
 	end
 	
 	vm:set_data(data)
