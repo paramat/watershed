@@ -51,6 +51,50 @@ minetest.register_node("watershed:stone", {
 	sounds = default.node_sound_stone_defaults(),
 })
 
+minetest.register_node("watershed:cloud", {
+	description = "WS Cloud",
+	drawtype = "glasslike",
+	tiles = {"watershed_cloud.png"},
+	paramtype = "light",
+	is_ground_content = false,
+	sunlight_propagates = true,
+	walkable = false,
+	pointable = false,
+	diggable = false,
+	buildable_to = true,
+	post_effect_color = {a=64, r=241, g=248, b=255},
+	groups = {not_in_creative_inventory=1},
+})
+
+minetest.register_node("watershed:cactus", {
+	description = "WS Cactus",
+	tiles = {"default_cactus_top.png", "default_cactus_top.png", "default_cactus_side.png"},
+	paramtype2 = "facedir",
+	is_ground_content = false,
+	groups = {snappy=1,choppy=3,flammable=2},
+	drop = "default:cactus",
+	sounds = default.node_sound_wood_defaults(),
+	on_place = minetest.rotate_node
+})
+
+minetest.register_node("watershed:goldengrass", {
+	description = "Golden Grass",
+	drawtype = "plantlike",
+	tiles = {"watershed_goldengrass.png"},
+	inventory_image = "watershed_goldengrass.png",
+	wield_image = "watershed_goldengrass.png",
+	paramtype = "light",
+	walkable = false,
+	buildable_to = true,
+	is_ground_content = true,
+	groups = {snappy=3,flammable=3,flora=1,attached_node=1},
+	sounds = default.node_sound_leaves_defaults(),
+	selection_box = {
+		type = "fixed",
+		fixed = {-0.5, -0.5, -0.5, 0.5, -5/16, 0.5},
+	},
+})
+
 minetest.register_node("watershed:water", {
 	description = "WS Water Source",
 	inventory_image = minetest.inventorycube("default_water.png"),

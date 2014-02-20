@@ -1,22 +1,25 @@
--- watershed 0.2.2 by paramat
+-- watershed 0.2.3 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
+-- 0.2.3 clouds, cacti, ice, papyrus, dry shrub
+
 -- Parameters
 
-local YMIN = 6000
-local YMAX = 8000 -- Top of atmosphere / mountains / floatlands
-local TERCEN = 7008 -- Terrain centre
+local YMIN = 6000 -- Approximate base of realm stone
+local YMAX = 8000 -- Approximate top of atmosphere / mountains / floatlands
+local TERCEN = 7960 -- Terrain 'centre'. Approximate average seabed level
 local YWAT = 7024 -- Sea level
+local CLOUDY = 7152 -- Cloud level
 local TERSCA = 384 -- Vertical terrain scale
 local XLSAMP = 0 -- Extra large scale height variation amplitude
 local BASAMP = 0.3 -- Base terrain amplitude
 local CANAMP = 0.7 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
 local TSTONE = 0.015 -- Density threshold for stone
-local TRIV = -0.027 -- Maximum densitybase threshold for river water
-local TSAND = -0.03 -- Maximum densitybase threshold for sand
+local TRIV = -0.017 -- Maximum densitybase threshold for river water
+local TSAND = -0.02 -- Maximum densitybase threshold for sand
 local FIST = 0 -- Fissure threshold at surface. Controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORECHA = 1 / (7 * 7 * 7) -- Ore chance per stone node
@@ -25,9 +28,12 @@ local PINCHA = 47 -- Pine tree 1/x chance per node
 local APTCHA = 47 -- Appletree
 local FLOCHA = 36 -- Flower
 local FOGCHA = 9 -- Forest grass
-local GRACHA = 5 -- Grassland grasses
+local GRACHA = 3 -- Grassland grasses
 local JUTCHA = 16 -- Jungletree
 local JUGCHA = 9 -- Junglegrass
+local CACCHA = 529 -- Cactus
+local DRYCHA = 361 -- Dry shrub
+local PAPCHA = 3 -- Papyrus
 
 -- 3D noise for rough terrain
 
@@ -95,6 +101,17 @@ local np_xlscale = {
 	persist = 0.4
 }
 
+-- 2D noise for clouds
+
+local np_cloud = {
+	offset = 0,
+	scale = 1,
+	spread = {x=207, y=207, z=207},
+	seed = 2113,
+	octaves = 4,
+	persist = 0.8
+}
+
 -- Stuff
 
 watershed = {}
@@ -128,8 +145,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_sand = minetest.get_content_id("default:sand")
 	local c_desand = minetest.get_content_id("default:desert_sand")
 	local c_snowblock = minetest.get_content_id("default:snowblock")
+	local c_ice = minetest.get_content_id("default:ice")
 	local c_dirtsnow = minetest.get_content_id("default:dirt_with_snow")
 	local c_jungrass = minetest.get_content_id("default:junglegrass")
+	local c_dryshrub = minetest.get_content_id("default:dry_shrub")
 	local c_stodiam = minetest.get_content_id("default:stone_with_diamond")
 	local c_stomese = minetest.get_content_id("default:stone_with_mese")
 	local c_stogold = minetest.get_content_id("default:stone_with_gold")
@@ -142,6 +161,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wsredstone = minetest.get_content_id("watershed:redstone")
 	local c_wsgrass = minetest.get_content_id("watershed:grass")
 	local c_wsdirt = minetest.get_content_id("watershed:dirt")
+	local c_wscloud = minetest.get_content_id("watershed:cloud")
 	
 	local sidelen = x1 - x0 + 1
 	local chulens = {x=sidelen, y=sidelen, z=sidelen}
@@ -155,6 +175,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 	local nvals_biome = minetest.get_perlin_map(np_biome, chulens):get2dMap_flat(minposxz)
 	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
+	local nvals_cloud = minetest.get_perlin_map(np_cloud, chulens):get2dMap_flat(minposxz)
 	
 	local nixyz = 1
 	local nixz = 1
@@ -196,7 +217,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				end
 				
 				if density >= tstone and nofis  -- stone cut by fissures
-				or (density >= tstone and density < TSTONE * 2 and y <= YWAT) then -- or stone layer around water
+				or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- or stone layer around water
+				or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- or stone layer around river
 					if n_biome > 0.7 then
 						data[vi] = c_wsredstone
 					elseif math.random() < ORECHA then
@@ -243,17 +265,38 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						under[si] = 0
 					end
 				elseif y <= YWAT and density < tstone then -- sea water, not in fissures
-					data[vi] = c_water
+					if y == YWAT and n_biome < -1 then
+						data[vi] = c_ice
+					else
+						data[vi] = c_water
+						if y == YWAT and n_biome > 0.2 and stable[si] >= 1
+						and math.random(PAPCHA) == 2 then -- papyrus in desert and rainforest
+							watershed_papyrus(x, y, z, area, data)
+						end
+					end
 					stable[si] = 0
 					under[si] = 0
 				elseif densitybase >= triv and density < tstone then -- river water, not in fissures
-					data[vi] = c_wswater
+					if n_biome < -1 then
+						data[vi] = c_ice
+					else
+						data[vi] = c_wswater
+					end
+					stable[si] = 0
+					under[si] = 0
+				elseif y == CLOUDY then -- clouds
+					local xrq = 16 * math.floor((x - x0) / 16)
+					local zrq = 16 * math.floor((z - z0) / 16)
+					local qixz = zrq * sidelen + xrq + 1
+					if nvals_cloud[qixz] > 0.5 then
+						data[vi] = c_wscloud
+					end
 					stable[si] = 0
 					under[si] = 0
 				else -- possible above surface air node
 					if y >= YWAT and under[si] ~= 0 then
 						if under[si] == 1 then
-							if math.random(PINCHA) == 2 then
+							if n_biome > -1 and math.random(PINCHA) == 2 then
 								watershed_pinetree(x, y, z, area, data)
 							else
 								data[viu] = c_dirtsnow
@@ -289,6 +332,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								if math.random(JUGCHA) == 2 then
 									data[vi] = c_jungrass
 								end
+							end
+						elseif under[si] == 5 then
+							if n_biome < 0.8 and math.random(CACCHA) == 2 then
+								watershed_cactus(x, y, z, area, data)
+							elseif n_biome < 0.8 and math.random(DRYCHA) == 2 then
+								data[vi] = c_dryshrub
 							end
 						end
 					end

@@ -82,6 +82,25 @@ function watershed_jungletree(x, y, z, area, data)
 	end
 end
 
+function watershed_savannatree(x, y, z, area, data)
+	local c_tree = minetest.get_content_id("default:tree")
+	local c_leaves = minetest.get_content_id("default:leaves")
+	for j = -3, 6 do
+		if j >= 5 then
+			for i = -3, 3 do
+			for k = -3, 3 do
+				local vil = area:index(x + i, y + j + 1, z + k)
+				if math.random(2) == 2 then
+					data[vil] = c_leaves
+				end
+			end
+			end
+		end
+		local vit = area:index(x, y + j, z)
+		data[vit] = c_tree
+	end
+end
+
 function watershed_grass(data, vi)
 	local c_grass1 = minetest.get_content_id("default:grass_1")
 	local c_grass2 = minetest.get_content_id("default:grass_2")
@@ -122,5 +141,26 @@ function watershed_flower(data, vi)
 		data[vi] = c_geranium
 	else
 		data[vi] = c_viola
+	end
+end
+
+function watershed_cactus(x, y, z, area, data)
+	local c_wscactus = minetest.get_content_id("watershed:cactus")
+	for j = -2, 4 do
+	for i = -2, 2 do
+		if i == 0 or j == 2 or (j == 3 and math.abs(i) == 2) then
+			local vic = area:index(x + i, y + j, z)
+			data[vic] = c_wscactus
+		end
+	end
+	end
+end
+
+function watershed_papyrus(x, y, z, area, data)
+	local c_papyrus = minetest.get_content_id("default:papyrus")
+	local ph = math.random(1, 4)
+	for j = 1, ph do
+		local vip = area:index(x, y + j, z)
+		data[vip] = c_papyrus
 	end
 end
