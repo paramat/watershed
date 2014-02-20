@@ -28,7 +28,7 @@ minetest.register_node("watershed:dirt", {
 
 minetest.register_node("watershed:grass", {
 	description = "WS Grass",
-	tiles = {"default_grass.png", "default_dirt.png", "default_grass.png"},
+	tiles = {"default_grass.png", "default_dirt.png", "default_dirt.png^default_grass_side.png"},
 	is_ground_content = false,
 	groups = {crumbly=3,soil=1},
 	drop = "default:dirt",
@@ -93,6 +93,17 @@ minetest.register_node("watershed:goldengrass", {
 		type = "fixed",
 		fixed = {-0.5, -0.5, -0.5, 0.5, -5/16, 0.5},
 	},
+})
+
+minetest.register_node("watershed:drygrass", {
+	description = "WS Dry Grass",
+	tiles = {"watershed_drygrass.png"},
+	is_ground_content = false,
+	groups = {crumbly=3,soil=1},
+	drop = "default:dirt",
+	sounds = default.node_sound_dirt_defaults({
+		footstep = {name="default_grass_footstep", gain=0.4},
+	}),
 })
 
 minetest.register_node("watershed:water", {

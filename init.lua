@@ -3,26 +3,32 @@
 -- Depends default
 -- License: code WTFPL
 
--- 0.2.3 clouds, cacti, ice, papyrus, dry shrub
+-- 0.2.3 clouds, cacti, ice, papyrus, dry shrubs
+-- savanna with acacias, dry grass surface nodes and golden grass
+-- arctan density gradient for floatlands and caves
 
 -- Parameters
 
 local YMIN = 6000 -- Approximate base of realm stone
 local YMAX = 8000 -- Approximate top of atmosphere / mountains / floatlands
-local TERCEN = 7960 -- Terrain 'centre'. Approximate average seabed level
+local TERCEN = 6960 -- Terrain 'centre'. Approximate average seabed level
 local YWAT = 7024 -- Sea level
 local CLOUDY = 7152 -- Cloud level
+
 local TERSCA = 384 -- Vertical terrain scale
 local XLSAMP = 0 -- Extra large scale height variation amplitude
 local BASAMP = 0.3 -- Base terrain amplitude
 local CANAMP = 0.7 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
-local TSTONE = 0.015 -- Density threshold for stone
+local ATANAMP = 1.4 -- Arctan function amplitude. Controls size and number of floatlands / caves
+
+local TSTONE = 0.02 -- Density threshold for stone
 local TRIV = -0.017 -- Maximum densitybase threshold for river water
 local TSAND = -0.02 -- Maximum densitybase threshold for sand
 local FIST = 0 -- Fissure threshold at surface. Controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORECHA = 1 / (7 * 7 * 7) -- Ore chance per stone node
+local CLOUT = 0.5 -- Cloud threshold
 
 local PINCHA = 47 -- Pine tree 1/x chance per node
 local APTCHA = 47 -- Appletree
@@ -31,9 +37,11 @@ local FOGCHA = 9 -- Forest grass
 local GRACHA = 3 -- Grassland grasses
 local JUTCHA = 16 -- Jungletree
 local JUGCHA = 9 -- Junglegrass
-local CACCHA = 529 -- Cactus
-local DRYCHA = 361 -- Dry shrub
+local CACCHA = 841 -- Cactus
+local DRYCHA = 169 -- Dry shrub
 local PAPCHA = 3 -- Papyrus
+local ACACHA = 841 -- Acacia tree
+local GOGCHA = 3 -- Golden grass
 
 -- 3D noise for rough terrain
 
@@ -106,10 +114,10 @@ local np_xlscale = {
 local np_cloud = {
 	offset = 0,
 	scale = 1,
-	spread = {x=207, y=207, z=207},
+	spread = {x=104, y=104, z=104},
 	seed = 2113,
-	octaves = 4,
-	persist = 0.8
+	octaves = 3,
+	persist = 0.9
 }
 
 -- Stuff
@@ -160,6 +168,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wsstone = minetest.get_content_id("watershed:stone")
 	local c_wsredstone = minetest.get_content_id("watershed:redstone")
 	local c_wsgrass = minetest.get_content_id("watershed:grass")
+	local c_wsdrygrass = minetest.get_content_id("watershed:drygrass")
+	local c_wsgoldgrass = minetest.get_content_id("watershed:goldengrass")
 	local c_wsdirt = minetest.get_content_id("watershed:dirt")
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
 	
@@ -198,14 +208,14 @@ minetest.register_on_generated(function(minp, maxp, seed)
 			local viu = area:index(x0, y-1, z)
 			for x = x0, x1 do -- for each node do
 				local si = x - x0 + 1
-				local grad = (TERCEN - y) / TERSCA
+				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
 				local n_base = nvals_base[nixz]
 				local n_biome = nvals_biome[nixz]
 				local terblen = 1 - math.abs(n_base)
 				local densitybase = terblen * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
 				local triv = TRIV * (1 - terblen * 1.1) -- 1.1 river disappears before ridge top
 				local tsand = TSAND * (1 - terblen * 1.1)
-				local tstone = TSTONE * (1 + grad * 1.5)
+				local tstone = TSTONE * (1 + grad)
 				local density = densitybase
 				+ math.abs(nvals_rough[nixyz] * terblen + nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
 				
@@ -219,7 +229,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				if density >= tstone and nofis  -- stone cut by fissures
 				or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- or stone layer around water
 				or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- or stone layer around river
-					if n_biome > 0.7 then
+					if n_biome > 0.8 then
 						data[vi] = c_wsredstone
 					elseif math.random() < ORECHA then
 						local osel = math.random(34)
@@ -240,20 +250,24 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						data[vi] = c_wsstone
 					end
 					stable[si] = stable[si] + 1
+					under[si] = 0
 				elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
 					if densitybase >= tsand or y <= YWAT + 1 + math.random(2) then -- river / seabed not cut by fissures
 						data[vi] = c_sand
 					elseif nofis then -- fine materials cut by fissures
-						if n_biome > 0.7 then
+						if n_biome > 0.8 then
 							data[vi] = c_desand
-							under[si] = 5 -- desert
-						elseif n_biome > 0.2 then
+							under[si] = 6 -- desert
+						elseif n_biome > 0.4 then
+							data[vi] = c_wsdirt
+							under[si] = 5 -- savanna
+						elseif n_biome > 0 then
 							data[vi] = c_wsdirt
 							under[si] = 4 -- rainforest
-						elseif n_biome > -0.2 then
+						elseif n_biome > -0.4 then
 							data[vi] = c_wsdirt
 							under[si] = 3 -- grassland
-						elseif n_biome > -0.7 then
+						elseif n_biome > -0.8 then
 							data[vi] = c_wsdirt
 							under[si] = 2 -- forest
 						else
@@ -288,7 +302,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					local xrq = 16 * math.floor((x - x0) / 16)
 					local zrq = 16 * math.floor((z - z0) / 16)
 					local qixz = zrq * sidelen + xrq + 1
-					if nvals_cloud[qixz] > 0.5 then
+					if nvals_cloud[qixz] > CLOUT then
 						data[vi] = c_wscloud
 					end
 					stable[si] = 0
@@ -334,9 +348,18 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								end
 							end
 						elseif under[si] == 5 then
-							if n_biome < 0.8 and math.random(CACCHA) == 2 then
+							if math.random(ACACHA) == 2 then
+								watershed_acaciatree(x, y, z, area, data)
+							else
+								data[viu] = c_wsdrygrass
+								if math.random(GOGCHA) == 2 then
+									data[vi] = c_wsgoldgrass
+								end
+							end
+						elseif under[si] == 6 and n_biome < 1 then
+							if math.random(CACCHA) == 2 then
 								watershed_cactus(x, y, z, area, data)
-							elseif n_biome < 0.8 and math.random(DRYCHA) == 2 then
+							elseif math.random(DRYCHA) == 2 then
 								data[vi] = c_dryshrub
 							end
 						end

@@ -82,22 +82,41 @@ function watershed_jungletree(x, y, z, area, data)
 	end
 end
 
-function watershed_savannatree(x, y, z, area, data)
+function watershed_acaciatree(x, y, z, area, data)
 	local c_tree = minetest.get_content_id("default:tree")
 	local c_leaves = minetest.get_content_id("default:leaves")
-	for j = -3, 6 do
-		if j >= 5 then
-			for i = -3, 3 do
-			for k = -3, 3 do
-				local vil = area:index(x + i, y + j + 1, z + k)
-				if math.random(2) == 2 then
-					data[vil] = c_leaves
+	for j = -3, 7 do
+		if j == 7 then
+			for i = -4, 4 do
+			for k = -4, 4 do
+				if not (i == 0 or k == 0) then
+					if math.random(5) ~= 2 then
+						local vil = area:index(x + i, y + j, z + k)
+						data[vil] = c_leaves
+					end
 				end
 			end
 			end
+		elseif j == 6 then
+			for i = -2, 2, 4 do
+			for k = -2, 2, 4 do
+				local vit = area:index(x + i, y + j, z + k)
+				data[vit] = c_tree
+			end
+			end
+		elseif j == 5 then
+			for i = -1, 1 do
+			for k = -1, 1 do
+				if math.abs(i) + math.abs(k) == 2 then
+					local vit = area:index(x + i, y + j, z + k)
+					data[vit] = c_tree
+				end
+			end
+			end
+		else
+			local vit = area:index(x, y + j, z)
+			data[vit] = c_tree
 		end
-		local vit = area:index(x, y + j, z)
-		data[vit] = c_tree
 	end
 end
 
