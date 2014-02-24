@@ -1,11 +1,12 @@
--- watershed 0.2.3 by paramat
+-- watershed 0.2.4 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- 0.2.3 clouds, cacti, ice, papyrus, dry shrubs
--- savanna with acacias, dry grass surface nodes and golden grass
--- arctan density gradient for floatlands and caves
+-- 0.2.4 soil depth table must meet depth of trees
+-- altprop, arctan version keeps thin dirt/sand on floatlands
+-- math.abs() biomes for planet-like biomes. x4 spread factor
+-- biome noise spread 1024, 2 octaves, 3D
 
 -- Parameters
 
@@ -13,22 +14,22 @@ local YMIN = 6000 -- Approximate base of realm stone
 local YMAX = 8000 -- Approximate top of atmosphere / mountains / floatlands
 local TERCEN = 6960 -- Terrain 'centre'. Approximate average seabed level
 local YWAT = 7024 -- Sea level
-local CLOUDY = 7152 -- Cloud level
+local YCLOUD = 7152 -- Cloud level
 
 local TERSCA = 384 -- Vertical terrain scale
 local XLSAMP = 0 -- Extra large scale height variation amplitude
-local BASAMP = 0.3 -- Base terrain amplitude
-local CANAMP = 0.7 -- Canyon terrain amplitude
+local BASAMP = 0.4 -- Base terrain amplitude
+local CANAMP = 0.6 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
-local ATANAMP = 1.4 -- Arctan function amplitude. Controls size and number of floatlands / caves
+local ATANAMP = 1.2 -- Arctan function amplitude, controls size and number of floatlands / caves
 
-local TSTONE = 0.02 -- Density threshold for stone
-local TRIV = -0.017 -- Maximum densitybase threshold for river water
-local TSAND = -0.02 -- Maximum densitybase threshold for sand
-local FIST = 0 -- Fissure threshold at surface. Controls size of fissure entrances at surface
+local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
+local TRIV = -0.015 -- Maximum densitybase threshold for river water
+local TSAND = -0.018 -- Maximum densitybase threshold for river sand
+local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
-local ORECHA = 1 / (7 * 7 * 7) -- Ore chance per stone node
-local CLOUT = 0.5 -- Cloud threshold
+local ORECHA = 7 * 7 * 7 -- Ore chance per stone node
+local TCLOUD = 1 -- Cloud threshold
 
 local PINCHA = 47 -- Pine tree 1/x chance per node
 local APTCHA = 47 -- Appletree
@@ -61,7 +62,7 @@ local np_smooth = {
 	scale = 1,
 	spread = {x=512, y=512, z=512},
 	seed = 593,
-	octaves = 6,
+	octaves = 5,
 	persist = 0.4
 }
 
@@ -76,6 +77,17 @@ local np_fissure = {
 	persist = 0.5
 }
 
+-- 3D noise for biomes
+
+local np_biome = {
+	offset = 0,
+	scale = 1,
+	spread = {x=1024, y=1024, z=1024},
+	seed = -677772,
+	octaves = 2,
+	persist = 0.5
+}
+
 -- 2D noise for base terrain / riverbed height / mountain ranges, terrain blend, river and river sand depth
 
 local np_base = {
@@ -85,17 +97,6 @@ local np_base = {
 	seed = 8890,
 	octaves = 4,
 	persist = 0.4
-}
-
--- 2D noise for biomes
-
-local np_biome = {
-	offset = 0,
-	scale = 1,
-	spread = {x=512, y=512, z=512},
-	seed = -677772,
-	octaves = 3,
-	persist = 0.5
 }
 
 -- 2D noise for extra large scale height variation
@@ -114,10 +115,10 @@ local np_xlscale = {
 local np_cloud = {
 	offset = 0,
 	scale = 1,
-	spread = {x=104, y=104, z=104},
+	spread = {x=207, y=207, z=207},
 	seed = 2113,
-	octaves = 3,
-	persist = 0.9
+	octaves = 4,
+	persist = 0.8
 }
 
 -- Stuff
@@ -181,9 +182,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
 	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
+	local nvals_biome = minetest.get_perlin_map(np_biome, chulens):get3dMap_flat(minposxyz)
 	
 	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
-	local nvals_biome = minetest.get_perlin_map(np_biome, chulens):get2dMap_flat(minposxz)
 	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
 	local nvals_cloud = minetest.get_perlin_map(np_cloud, chulens):get2dMap_flat(minposxz)
 	
@@ -191,10 +192,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local nixz = 1
 	local stable = {}
 	local under = {}
+	local soil = {}
 	for z = z0, z1 do -- for each xy plane progressing northwards
 		for x = x0, x1 do
 			local si = x - x0 + 1
 			under[si] = 0
+			soil[si] = 0
 			local nodename = minetest.get_node({x=x,y=y0-1,z=z}).name
 			if nodename == "air"
 			or nodename == "default:water_source" then
@@ -210,14 +213,16 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local si = x - x0 + 1
 				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
 				local n_base = nvals_base[nixz]
-				local n_biome = nvals_biome[nixz]
-				local terblen = 1 - math.abs(n_base)
-				local densitybase = terblen * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
-				local triv = TRIV * (1 - terblen * 1.1) -- 1.1 river disappears before ridge top
-				local tsand = TSAND * (1 - terblen * 1.1)
-				local tstone = TSTONE * (1 + grad)
+				local n_biome = math.abs(nvals_biome[nixz]) -- math.abs() for planet like biomes: polar blobs and desert networks
+				local terblen = math.max(1 - math.abs(n_base), 0)
+				local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
+				local altprop = (y - YWAT) / (TERCEN + TERSCA - YWAT)
+				local triv = TRIV * (1 - altprop * 1.1)
+				local tsand = TSAND * (1 - altprop * 1.1)
+				local tstone = TSTONE * (1 - math.atan(altprop) * 0.6) -- 1 to 0.05 for thin dirt/sand on floatlands
 				local density = densitybase
-				+ math.abs(nvals_rough[nixyz] * terblen + nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
+				+ math.abs(nvals_rough[nixyz] * terblen
+				+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
 				
 				local nofis = false
 				if density >= 0 then -- if terrain set fissure flag
@@ -229,9 +234,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				if density >= tstone and nofis  -- stone cut by fissures
 				or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- or stone layer around water
 				or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- or stone layer around river
-					if n_biome > 0.8 then
+					if n_biome < 0.15 then
 						data[vi] = c_wsredstone
-					elseif math.random() < ORECHA then
+					elseif math.random(ORECHA) == 2 then
 						local osel = math.random(34)
 						if osel == 34 then
 							data[vi] = c_stodiam
@@ -251,73 +256,83 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					end
 					stable[si] = stable[si] + 1
 					under[si] = 0
+					soil[si] = 0
 				elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
-					if densitybase >= tsand or y <= YWAT + 1 + math.random(2) then -- river / seabed not cut by fissures
-						data[vi] = c_sand
+					if densitybase >= tsand + math.random() * 0.003 or y <= YWAT + 1 + math.random(2) then
+						data[vi] = c_sand -- river / seabed sand not cut by fissures
 					elseif nofis then -- fine materials cut by fissures
-						if n_biome > 0.8 then
+						if n_biome < 0.15 then
 							data[vi] = c_desand
 							under[si] = 6 -- desert
-						elseif n_biome > 0.4 then
+						elseif n_biome < 0.3 then
 							data[vi] = c_wsdirt
 							under[si] = 5 -- savanna
-						elseif n_biome > 0 then
+							soil[si] = soil[si] + 1
+						elseif n_biome < 0.45 then
 							data[vi] = c_wsdirt
 							under[si] = 4 -- rainforest
-						elseif n_biome > -0.4 then
+							soil[si] = soil[si] + 1
+						elseif n_biome < 0.6 then
 							data[vi] = c_wsdirt
 							under[si] = 3 -- grassland
-						elseif n_biome > -0.8 then
+						elseif n_biome < 0.75 then
 							data[vi] = c_wsdirt
 							under[si] = 2 -- forest
+							soil[si] = soil[si] + 1
 						else
 							data[vi] = c_wsdirt
 							under[si] = 1 -- taiga
+							soil[si] = soil[si] + 1
 						end
 					else -- fissure
 						stable[si] = 0
 						under[si] = 0
+						soil[si] = 0
 					end
 				elseif y <= YWAT and density < tstone then -- sea water, not in fissures
-					if y == YWAT and n_biome < -1 then
+					if y == YWAT and n_biome > 0.9 then
 						data[vi] = c_ice
 					else
 						data[vi] = c_water
-						if y == YWAT and n_biome > 0.2 and stable[si] >= 1
+						if y == YWAT and n_biome < 0.45 and stable[si] >= 1
 						and math.random(PAPCHA) == 2 then -- papyrus in desert and rainforest
 							watershed_papyrus(x, y, z, area, data)
 						end
 					end
 					stable[si] = 0
 					under[si] = 0
+					soil[si] = 0
 				elseif densitybase >= triv and density < tstone then -- river water, not in fissures
-					if n_biome < -1 then
+					if n_biome > 0.9 then
 						data[vi] = c_ice
 					else
 						data[vi] = c_wswater
 					end
 					stable[si] = 0
 					under[si] = 0
-				elseif y == CLOUDY then -- clouds
+					soil[si] = 0
+				elseif y == YCLOUD then -- clouds
 					local xrq = 16 * math.floor((x - x0) / 16)
 					local zrq = 16 * math.floor((z - z0) / 16)
-					local qixz = zrq * sidelen + xrq + 1
-					if nvals_cloud[qixz] > CLOUT then
+					local qixz = zrq * 80 + xrq + 1
+					if nvals_cloud[qixz] > TCLOUD and nvals_biome[qixz] > 0.15 then
 						data[vi] = c_wscloud
 					end
 					stable[si] = 0
 					under[si] = 0
+					soil[si] = 0
 				else -- possible above surface air node
 					if y >= YWAT and under[si] ~= 0 then
 						if under[si] == 1 then
-							if n_biome > -1 and math.random(PINCHA) == 2 then
+							if n_biome < 0.9 and math.random(PINCHA) == 2
+							and soil[si] >= 4 then
 								watershed_pinetree(x, y, z, area, data)
 							else
 								data[viu] = c_dirtsnow
 								data[vi] = c_snowblock
 							end
 						elseif under[si] == 2 then
-							if math.random(APTCHA) == 2 then
+							if math.random(APTCHA) == 2 and soil[si] >= 2 then
 								watershed_appletree(x, y, z, area, data)
 							else
 								data[viu] = c_wsgrass
@@ -339,7 +354,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								end
 							end
 						elseif under[si] == 4 then
-							if math.random(JUTCHA) == 2 then
+							if math.random(JUTCHA) == 2 and soil[si] >= 5 then
 								watershed_jungletree(x, y, z, area, data)
 							else
 								data[viu] = c_wsgrass
@@ -348,7 +363,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								end
 							end
 						elseif under[si] == 5 then
-							if math.random(ACACHA) == 2 then
+							if math.random(ACACHA) == 2 and soil[si] >= 3 then
 								watershed_acaciatree(x, y, z, area, data)
 							else
 								data[viu] = c_wsdrygrass
@@ -356,7 +371,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 									data[vi] = c_wsgoldgrass
 								end
 							end
-						elseif under[si] == 6 and n_biome < 1 then
+						elseif under[si] == 6 and n_biome > 0.1 then
 							if math.random(CACCHA) == 2 then
 								watershed_cactus(x, y, z, area, data)
 							elseif math.random(DRYCHA) == 2 then
@@ -366,6 +381,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					end
 					stable[si] = 0
 					under[si] = 0
+					soil[si] = 0
 				end
 				nixyz = nixyz + 1
 				nixz = nixz + 1
