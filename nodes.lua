@@ -106,6 +106,15 @@ minetest.register_node("watershed:drygrass", {
 	}),
 })
 
+minetest.register_node("watershed:permafrost", {
+	description = "WS Permafrost",
+	tiles = {"watershed_permafrost.png"},
+	is_ground_content = false,
+	groups = {crumbly=2},
+	drop = "default:dirt",
+	sounds = default.node_sound_dirt_defaults(),
+})
+
 minetest.register_node("watershed:water", {
 	description = "WS Water Source",
 	inventory_image = minetest.inventorycube("default_water.png"),

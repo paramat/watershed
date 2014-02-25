@@ -1,12 +1,12 @@
--- watershed 0.2.4 by paramat
+-- watershed 0.2.5 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- 0.2.4 soil depth table must meet depth of trees
--- altprop, arctan version keeps thin dirt/sand on floatlands
--- math.abs() biomes for planet-like biomes. x4 spread factor
--- biome noise spread 1024, 2 octaves, 3D
+-- 0.2.5 ores hidden below surface
+-- 3D temp / humid biome system, 8 biomes
+-- swap drygrass and grassland, variety of grasses in each, flowers in grassland, junglegrass moved to rainforest
+-- darkclouds back again
 
 -- Parameters
 
@@ -29,7 +29,15 @@ local TSAND = -0.018 -- Maximum densitybase threshold for river sand
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORECHA = 7 * 7 * 7 -- Ore chance per stone node
-local TCLOUD = 1 -- Cloud threshold
+local TCLOUD = 0.5 -- Cloud threshold
+local TDCLOUD = 1 -- Dark cloud threshold
+
+local HITET = 0.5 --  -- 
+local LOTET = -0.5 --  -- 
+local ICETET = -0.8 --  -- 
+local HIHUT = 0.5 --  -- 
+local MIDHUT = 0 --  -- 
+local LOHUT = -0.5 --  -- 
 
 local PINCHA = 47 -- Pine tree 1/x chance per node
 local APTCHA = 47 -- Appletree
@@ -77,13 +85,24 @@ local np_fissure = {
 	persist = 0.5
 }
 
--- 3D noise for biomes
+-- 3D noise for temperature
 
-local np_biome = {
+local np_temp = {
 	offset = 0,
 	scale = 1,
-	spread = {x=1024, y=1024, z=1024},
-	seed = -677772,
+	spread = {x=512, y=512, z=512},
+	seed = 9130,
+	octaves = 2,
+	persist = 0.5
+}
+
+-- 3D noise for humidity
+
+local np_humid = {
+	offset = 0,
+	scale = 1,
+	spread = {x=512, y=512, z=512},
+	seed = -55500,
 	octaves = 2,
 	persist = 0.5
 }
@@ -118,7 +137,7 @@ local np_cloud = {
 	spread = {x=207, y=207, z=207},
 	seed = 2113,
 	octaves = 4,
-	persist = 0.8
+	persist = 0.7
 }
 
 -- Stuff
@@ -173,6 +192,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wsgoldgrass = minetest.get_content_id("watershed:goldengrass")
 	local c_wsdirt = minetest.get_content_id("watershed:dirt")
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
+	local c_wsdarkcloud = minetest.get_content_id("watershed:darkcloud")
+	local c_wspermafrost = minetest.get_content_id("watershed:permafrost")
 	
 	local sidelen = x1 - x0 + 1
 	local chulens = {x=sidelen, y=sidelen, z=sidelen}
@@ -182,7 +203,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
 	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
-	local nvals_biome = minetest.get_perlin_map(np_biome, chulens):get3dMap_flat(minposxyz)
+	local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
+	local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
 	
 	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
@@ -213,7 +235,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local si = x - x0 + 1
 				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
 				local n_base = nvals_base[nixz]
-				local n_biome = math.abs(nvals_biome[nixz]) -- math.abs() for planet like biomes: polar blobs and desert networks
 				local terblen = math.max(1 - math.abs(n_base), 0)
 				local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
 				local altprop = (y - YWAT) / (TERCEN + TERSCA - YWAT)
@@ -231,12 +252,37 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					end
 				end
 				
+				local n_temp = nvals_temp[nixyz] -- get raw temp and humid noise for use with node
+				local n_humid = nvals_humid[nixyz]
+				local biome = false -- select biome for node
+				if n_temp < LOTET then
+					if n_humid < MIDHUT then
+						biome = 1 -- tundra
+					else
+						biome = 2 -- taiga
+					end
+				elseif n_temp > HITET then
+					if n_humid < LOHUT then
+						biome = 6 -- desert
+					elseif n_humid > HIHUT then
+						biome = 8 -- rainforest
+					else
+						biome = 7 -- savanna
+					end
+				else
+					if n_humid < LOHUT then
+						biome = 3 -- dry grassland
+					elseif n_humid > HIHUT then
+						biome = 5 -- deciduous forest
+					else
+						biome = 4 -- grassland
+					end
+				end
+				
 				if density >= tstone and nofis  -- stone cut by fissures
 				or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- or stone layer around water
 				or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- or stone layer around river
-					if n_biome < 0.15 then
-						data[vi] = c_wsredstone
-					elseif math.random(ORECHA) == 2 then
+					if math.random(ORECHA) == 2 and density >= TSTONE then
 						local osel = math.random(34)
 						if osel == 34 then
 							data[vi] = c_stodiam
@@ -251,6 +297,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						else
 							data[vi] = c_stocoal
 						end
+					elseif biome == 6 then
+						data[vi] = c_wsredstone
 					else
 						data[vi] = c_wsstone
 					end
@@ -261,27 +309,33 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					if densitybase >= tsand + math.random() * 0.003 or y <= YWAT + 1 + math.random(2) then
 						data[vi] = c_sand -- river / seabed sand not cut by fissures
 					elseif nofis then -- fine materials cut by fissures
-						if n_biome < 0.15 then
+						if biome == 6 then
 							data[vi] = c_desand
 							under[si] = 6 -- desert
-						elseif n_biome < 0.3 then
+						elseif biome == 7 then
 							data[vi] = c_wsdirt
-							under[si] = 5 -- savanna
+							under[si] = 7 -- savanna
+							soil[si] = soil[si] + 1 -- increment soil if trees within biome
+						elseif biome == 8 then
+							data[vi] = c_wsdirt
+							under[si] = 8 -- rainforest
 							soil[si] = soil[si] + 1
-						elseif n_biome < 0.45 then
+						elseif biome == 3 then
 							data[vi] = c_wsdirt
-							under[si] = 4 -- rainforest
+							under[si] = 3 -- dry grassland
+						elseif biome == 4 then
+							data[vi] = c_wsdirt
+							under[si] = 4 -- grassland
+						elseif biome == 5 then
+							data[vi] = c_wsdirt
+							under[si] = 5 -- forest
 							soil[si] = soil[si] + 1
-						elseif n_biome < 0.6 then
+						elseif biome == 1 then
+							data[vi] = c_wspermafrost
+							under[si] = 1 -- tundra
+						elseif biome == 2 then
 							data[vi] = c_wsdirt
-							under[si] = 3 -- grassland
-						elseif n_biome < 0.75 then
-							data[vi] = c_wsdirt
-							under[si] = 2 -- forest
-							soil[si] = soil[si] + 1
-						else
-							data[vi] = c_wsdirt
-							under[si] = 1 -- taiga
+							under[si] = 2 -- taiga
 							soil[si] = soil[si] + 1
 						end
 					else -- fissure
@@ -290,11 +344,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						soil[si] = 0
 					end
 				elseif y <= YWAT and density < tstone then -- sea water, not in fissures
-					if y == YWAT and n_biome > 0.9 then
+					if y == YWAT and n_temp < ICETET then
 						data[vi] = c_ice
 					else
 						data[vi] = c_water
-						if y == YWAT and n_biome < 0.45 and stable[si] >= 1
+						if y == YWAT and biome >= 6 and stable[si] >= 1
 						and math.random(PAPCHA) == 2 then -- papyrus in desert and rainforest
 							watershed_papyrus(x, y, z, area, data)
 						end
@@ -303,7 +357,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					under[si] = 0
 					soil[si] = 0
 				elseif densitybase >= triv and density < tstone then -- river water, not in fissures
-					if n_biome > 0.9 then
+					if n_temp < ICETET then
 						data[vi] = c_ice
 					else
 						data[vi] = c_wswater
@@ -315,7 +369,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					local xrq = 16 * math.floor((x - x0) / 16)
 					local zrq = 16 * math.floor((z - z0) / 16)
 					local qixz = zrq * 80 + xrq + 1
-					if nvals_cloud[qixz] > TCLOUD and nvals_biome[qixz] > 0.15 then
+					if nvals_cloud[qixz] > TDCLOUD then
+						data[vi] = c_wsdarkcloud
+					elseif nvals_cloud[qixz] > TCLOUD then
 						data[vi] = c_wscloud
 					end
 					stable[si] = 0
@@ -324,14 +380,25 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				else -- possible above surface air node
 					if y >= YWAT and under[si] ~= 0 then
 						if under[si] == 1 then
-							if n_biome < 0.9 and math.random(PINCHA) == 2
+							if math.random(121) == 2 then
+								data[viu] = c_dirtsnow
+							elseif math.random(121) == 2 then
+								data[viu] = c_ice
+							else
+								data[viu] = c_wsdrygrass
+								if math.random(DRYCHA) == 2 then
+									data[vi] = c_dryshrub
+								end
+							end
+						elseif under[si] == 2 then
+							if n_humid > HIHUT and math.random(PINCHA) == 2
 							and soil[si] >= 4 then
 								watershed_pinetree(x, y, z, area, data)
 							else
 								data[viu] = c_dirtsnow
 								data[vi] = c_snowblock
 							end
-						elseif under[si] == 2 then
+						elseif under[si] == 5 then
 							if math.random(APTCHA) == 2 and soil[si] >= 2 then
 								watershed_appletree(x, y, z, area, data)
 							else
@@ -345,15 +412,26 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								end
 							end
 						elseif under[si] == 3 then
-							data[viu] = c_wsgrass
+							data[viu] = c_wsdrygrass
 							if math.random(GRACHA) == 2 then
-								if math.random(3) == 2 then
-									watershed_grass(data, vi)
+								if math.random(5) == 2 then
+									data[vi] = c_wsgoldgrass
 								else
-									data[vi] = c_jungrass
+									data[vi] = c_dryshrub
 								end
 							end
 						elseif under[si] == 4 then
+							data[viu] = c_wsgrass
+							if math.random(FLOCHA) == 2 then
+								watershed_flower(data, vi)
+							elseif math.random(GRACHA) == 2 then
+								if math.random(11) == 2 then
+									data[vi] = c_wsgoldgrass
+								else
+									watershed_grass(data, vi)
+								end
+							end
+						elseif under[si] == 8 then
 							if math.random(JUTCHA) == 2 and soil[si] >= 5 then
 								watershed_jungletree(x, y, z, area, data)
 							else
@@ -362,7 +440,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 									data[vi] = c_jungrass
 								end
 							end
-						elseif under[si] == 5 then
+						elseif under[si] == 7 then
 							if math.random(ACACHA) == 2 and soil[si] >= 3 then
 								watershed_acaciatree(x, y, z, area, data)
 							else
@@ -371,7 +449,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 									data[vi] = c_wsgoldgrass
 								end
 							end
-						elseif under[si] == 6 and n_biome > 0.1 then
+						elseif under[si] == 6 and n_temp < HITET + 0.1 then
 							if math.random(CACCHA) == 2 then
 								watershed_cactus(x, y, z, area, data)
 							elseif math.random(DRYCHA) == 2 then
