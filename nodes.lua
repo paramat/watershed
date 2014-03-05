@@ -40,6 +40,7 @@ minetest.register_node("watershed:grass", {
 minetest.register_node("watershed:redstone", {
 	description = "WS Red Stone",
 	tiles = {"default_desert_stone.png"},
+	is_ground_content = false,
 	groups = {cracky=3},
 	sounds = default.node_sound_stone_defaults(),
 })
@@ -47,6 +48,7 @@ minetest.register_node("watershed:redstone", {
 minetest.register_node("watershed:stone", {
 	description = "WS Stone",
 	tiles = {"default_stone.png"},
+	is_ground_content = false,
 	groups = {cracky=3},
 	sounds = default.node_sound_stone_defaults(),
 })
@@ -62,7 +64,24 @@ minetest.register_node("watershed:cloud", {
 	pointable = false,
 	diggable = false,
 	buildable_to = true,
+	is_ground_content = false,
 	post_effect_color = {a=64, r=241, g=248, b=255},
+	groups = {not_in_creative_inventory=1},
+})
+
+minetest.register_node("watershed:darkcloud", {
+	description = "WS Dark Cloud",
+	drawtype = "glasslike",
+	tiles = {"watershed_darkcloud.png"},
+	paramtype = "light",
+	is_ground_content = false,
+	sunlight_propagates = true,
+	walkable = false,
+	pointable = false,
+	diggable = false,
+	buildable_to = true,
+	is_ground_content = false,
+	post_effect_color = {a=128, r=241, g=248, b=255},
 	groups = {not_in_creative_inventory=1},
 })
 
@@ -86,7 +105,7 @@ minetest.register_node("watershed:goldengrass", {
 	paramtype = "light",
 	walkable = false,
 	buildable_to = true,
-	is_ground_content = true,
+	is_ground_content = false,
 	groups = {snappy=3,flammable=3,flora=1,attached_node=1},
 	sounds = default.node_sound_leaves_defaults(),
 	selection_box = {

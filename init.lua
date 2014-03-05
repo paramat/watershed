@@ -1,12 +1,13 @@
--- watershed 0.2.5 by paramat
+-- watershed 0.2.6 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- 0.2.5 ores hidden below surface
--- 3D temp / humid biome system, 8 biomes
--- swap drygrass and grassland, variety of grasses in each, flowers in grassland, junglegrass moved to rainforest
--- darkclouds back again
+-- darkcloud node def was missing
+-- ores and sandstone as strata with gentle sloping
+-- TODO
+-- more strata: gravel, sand, desert stone ...
+-- clay
 
 -- Parameters
 
@@ -23,14 +24,14 @@ local CANAMP = 0.6 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
 local ATANAMP = 1.2 -- Arctan function amplitude, controls size and number of floatlands / caves
 
-local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
+local TSTONE = 0.02 -- 0.02 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.015 -- Maximum densitybase threshold for river water
 local TSAND = -0.018 -- Maximum densitybase threshold for river sand
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
-local ORECHA = 7 * 7 * 7 -- Ore chance per stone node
+local ORECHA = 2 -- Ore 1/x chance per vein node
+local ORETHI = 0.003 -- Ore vein thickness tuner
 local TCLOUD = 0.5 -- Cloud threshold
-local TDCLOUD = 1 -- Dark cloud threshold
 
 local HITET = 0.5 --  -- 
 local LOTET = -0.5 --  -- 
@@ -38,6 +39,8 @@ local ICETET = -0.8 --  --
 local HIHUT = 0.5 --  -- 
 local MIDHUT = 0 --  -- 
 local LOHUT = -0.5 --  -- 
+local CLOHUT = 0 --  -- 
+local DCLOHUT = 1 --  -- 
 
 local PINCHA = 47 -- Pine tree 1/x chance per node
 local APTCHA = 47 -- Appletree
@@ -60,7 +63,7 @@ local np_rough = {
 	spread = {x=512, y=512, z=512},
 	seed = 593,
 	octaves = 6,
-	persist = 0.63
+	persist = 0.67
 }
 
 -- 3D noise for smooth terrain
@@ -107,6 +110,17 @@ local np_humid = {
 	persist = 0.5
 }
 
+-- 3D noise for strata variation
+
+local np_stratavar = {
+	offset = 0,
+	scale = 1,
+	spread = {x=128, y=32, z=128},
+	seed = -992221,
+	octaves = 2,
+	persist = 0.5
+}
+
 -- 2D noise for base terrain / riverbed height / mountain ranges, terrain blend, river and river sand depth
 
 local np_base = {
@@ -138,6 +152,17 @@ local np_cloud = {
 	seed = 2113,
 	octaves = 4,
 	persist = 0.7
+}
+
+-- 2D noise for strata
+
+local np_strata = {
+	offset = 0,
+	scale = 1,
+	spread = {x=128, y=128, z=128},
+	seed = 23,
+	octaves = 2,
+	persist = 0.5
 }
 
 -- Stuff
@@ -183,6 +208,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_stocopp = minetest.get_content_id("default:stone_with_copper")
 	local c_stoiron = minetest.get_content_id("default:stone_with_iron")
 	local c_stocoal = minetest.get_content_id("default:stone_with_coal")
+	local c_sandstone = minetest.get_content_id("default:sandstone")
 	
 	local c_wswater = minetest.get_content_id("watershed:water")
 	local c_wsstone = minetest.get_content_id("watershed:stone")
@@ -199,16 +225,20 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local chulens = {x=sidelen, y=sidelen, z=sidelen}
 	local minposxyz = {x=x0, y=y0, z=z0}
 	local minposxz = {x=x0, y=z0}
+	local minposy = {x=y0, y=0}
 	
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
 	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
 	local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
 	local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
+	local nvals_stratavar = minetest.get_perlin_map(np_stratavar, chulens):get3dMap_flat(minposxyz)
 	
 	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
 	local nvals_cloud = minetest.get_perlin_map(np_cloud, chulens):get2dMap_flat(minposxz)
+	
+	local nvals_strata = minetest.get_perlin_map(np_strata, chulens):get2dMap_flat(minposy)
 	
 	local nixyz = 1
 	local nixz = 1
@@ -240,7 +270,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local altprop = (y - YWAT) / (TERCEN + TERSCA - YWAT)
 				local triv = TRIV * (1 - altprop * 1.1)
 				local tsand = TSAND * (1 - altprop * 1.1)
-				local tstone = TSTONE * (1 - math.atan(altprop) * 0.6) -- 1 to 0.05 for thin dirt/sand on floatlands
+				local tstone = TSTONE * (1 - math.atan(altprop) * 0.6) -- 1 to 0.05
 				local density = densitybase
 				+ math.abs(nvals_rough[nixyz] * terblen
 				+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
@@ -280,25 +310,26 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				end
 				
 				if density >= tstone and nofis  -- stone cut by fissures
-				or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- or stone layer around water
-				or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- or stone layer around river
-					if math.random(ORECHA) == 2 and density >= TSTONE then
-						local osel = math.random(34)
-						if osel == 34 then
-							data[vi] = c_stodiam
-						elseif osel >= 31 then
-							data[vi] = c_stomese
-						elseif osel >= 28 then
-							data[vi] = c_stogold
-						elseif osel >= 19 then
-							data[vi] = c_stocopp
-						elseif osel >= 10 then
-							data[vi] = c_stoiron
-						else
-							data[vi] = c_stocoal
-						end
-					elseif biome == 6 then
+				or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
+				or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
+					local niy = y - y0 + 1
+					local n_strata = nvals_strata[niy] + nvals_stratavar[nixyz] / 4
+					if biome == 6 then
 						data[vi] = c_wsredstone
+					elseif n_strata >= 0 and n_strata <= ORETHI * 8 then
+						data[vi] = c_sandstone
+					elseif n_strata >= 1 and n_strata <= 1 + ORETHI then
+						data[vi] = c_stodiam
+					elseif n_strata >= 0.6 and n_strata <= 0.6 + ORETHI then
+						data[vi] = c_stomese
+					elseif n_strata >= 0.2 and n_strata <= 0.2 + ORETHI then
+						data[vi] = c_stogold
+					elseif n_strata >= -0.2 and n_strata <= -0.2 + ORETHI * 2 then
+						data[vi] = c_stocopp
+					elseif n_strata >= -0.6 and n_strata <= -0.6 + ORETHI * 2 then
+						data[vi] = c_stoiron
+					elseif n_strata >= -1 and n_strata <= -1 + ORETHI * 4 then
+						data[vi] = c_stocoal
 					else
 						data[vi] = c_wsstone
 					end
@@ -306,7 +337,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					under[si] = 0
 					soil[si] = 0
 				elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
-					if densitybase >= tsand + math.random() * 0.003 or y <= YWAT + 1 + math.random(2) then
+					if densitybase >= tsand + math.random() * 0.003
+					or y <= YWAT + 1 + math.random(2) then
 						data[vi] = c_sand -- river / seabed sand not cut by fissures
 					elseif nofis then -- fine materials cut by fissures
 						if biome == 6 then
@@ -369,10 +401,14 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					local xrq = 16 * math.floor((x - x0) / 16)
 					local zrq = 16 * math.floor((z - z0) / 16)
 					local qixz = zrq * 80 + xrq + 1
-					if nvals_cloud[qixz] > TDCLOUD then
-						data[vi] = c_wsdarkcloud
-					elseif nvals_cloud[qixz] > TCLOUD then
-						data[vi] = c_wscloud
+					if nvals_cloud[qixz] > TCLOUD then
+						local yrq = 16 * math.floor((y - y0) / 16)
+						local qixyz = zrq * 6400 + yrq * 80 + xrq + 1
+						if nvals_humid[qixyz] > DCLOHUT then
+							data[vi] = c_wsdarkcloud
+						elseif nvals_humid[qixyz] > CLOHUT then
+							data[vi] = c_wscloud
+						end
 					end
 					stable[si] = 0
 					under[si] = 0
