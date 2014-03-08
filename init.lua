@@ -1,19 +1,19 @@
--- watershed 0.2.7 by paramat
+-- watershed 0.2.8 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
 -- TODO
--- more strata: gravel
 -- clay
 
 -- Parameters
 
 local YMIN = 6000 -- Approximate base of realm stone
 local YMAX = 8000 -- Approximate top of atmosphere / mountains / floatlands
-local TERCEN = 6960 -- Terrain 'centre'. Approximate average seabed level
+local TERCEN = 6960 -- Terrain 'centre', average seabed level
 local YWAT = 7024 -- Sea level
 local YCLOUD = 7152 -- Cloud level
+local STRACEN = 7088 -- Strata centre
 
 local TERSCA = 384 -- Vertical terrain scale
 local XLSAMP = 0 -- Extra large scale height variation amplitude
@@ -27,17 +27,18 @@ local TRIV = -0.015 -- Maximum densitybase threshold for river water
 local TSAND = -0.018 -- Maximum densitybase threshold for river sand
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
-local ORETHI = 0.003 -- Ore vein thickness tuner
+local ORETHI = 0.001 -- Ore seam thickness tuner
+local ORET = 0.02 -- Ore threshold for seam
 local TCLOUD = 0.5 -- Cloud threshold
 
-local HITET = 0.5 --  -- 
-local LOTET = -0.5 --  -- 
-local ICETET = -0.8 --  -- 
-local HIHUT = 0.5 --  -- 
-local MIDHUT = 0 --  -- 
-local LOHUT = -0.5 --  -- 
-local CLOHUT = 0 --  -- 
-local DCLOHUT = 1 --  -- 
+local HITET = 0.5 -- High temperature threshold
+local LOTET = -0.5 -- Low ..
+local ICETET = -0.8 -- Ice ..
+local HIHUT = 0.5 -- High humidity threshold
+local MIDHUT = 0 -- Mid ..
+local LOHUT = -0.5 -- Low ..
+local CLOHUT = 0 -- Cloud humidity threshold
+local DCLOHUT = 1 -- Dark cloud ..
 
 local PINCHA = 47 -- Pine tree 1/x chance per node
 local APTCHA = 47 -- Appletree
@@ -112,9 +113,20 @@ local np_humid = {
 local np_ore = {
 	offset = 0,
 	scale = 1,
-	spread = {x=128, y=16, z=128},
+	spread = {x=512, y=128, z=512},
 	seed = -992221,
-	octaves = 1,
+	octaves = 2,
+	persist = 0.5
+}
+
+-- 3D noise for rock strata
+
+local np_strata = {
+	offset = 0,
+	scale = 1,
+	spread = {x=512, y=128, z=512},
+	seed = 92219,
+	octaves = 2,
 	persist = 0.5
 }
 
@@ -151,17 +163,6 @@ local np_cloud = {
 	persist = 0.7
 }
 
--- 2D noise for strata
-
-local np_strata = {
-	offset = 0,
-	scale = 1,
-	spread = {x=128, y=128, z=128},
-	seed = 23555677,
-	octaves = 1,
-	persist = 0.5
-}
-
 -- Stuff
 
 watershed = {}
@@ -190,67 +191,60 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
 	local data = vm:get_data()
 	
+	--local c_air = minetest.get_content_id("air")
+	--local c_water = minetest.get_content_id("air")
+	--local c_sand = minetest.get_content_id("air")
+	--local c_desand = minetest.get_content_id("air")
+	--local c_snowblock = minetest.get_content_id("air")
+	--local c_ice = minetest.get_content_id("air")
+	--local c_dirtsnow = minetest.get_content_id("air")
+	--local c_jungrass = minetest.get_content_id("air")
+	--local c_dryshrub = minetest.get_content_id("air")
+	
+	--local c_wswater = minetest.get_content_id("air")
+	--local c_wsstone = minetest.get_content_id("air")
+	--local c_wsredstone = minetest.get_content_id("air")
+	--local c_wsgrass = minetest.get_content_id("air")
+	--local c_wsdrygrass = minetest.get_content_id("air")
+	--local c_wsgoldgrass = minetest.get_content_id("air")
+	--local c_wsdirt = minetest.get_content_id("air")
+	--local c_wscloud = minetest.get_content_id("air")
+	--local c_wsdarkcloud = minetest.get_content_id("air")
+	--local c_wspermafrost = minetest.get_content_id("air")
+	
 	local c_air = minetest.get_content_id("air")
-	local c_water = minetest.get_content_id("air")
-	local c_sand = minetest.get_content_id("air")
-	local c_desand = minetest.get_content_id("air")
-	local c_snowblock = minetest.get_content_id("air")
-	local c_ice = minetest.get_content_id("air")
-	local c_dirtsnow = minetest.get_content_id("air")
-	local c_jungrass = minetest.get_content_id("air")
-	local c_dryshrub = minetest.get_content_id("air")
+	local c_water = minetest.get_content_id("default:water_source")
+	local c_sand = minetest.get_content_id("default:sand")
+	local c_desand = minetest.get_content_id("default:desert_sand")
+	local c_snowblock = minetest.get_content_id("default:snowblock")
+	local c_ice = minetest.get_content_id("default:ice")
+	local c_dirtsnow = minetest.get_content_id("default:dirt_with_snow")
+	local c_jungrass = minetest.get_content_id("default:junglegrass")
+	local c_dryshrub = minetest.get_content_id("default:dry_shrub")
 	local c_stodiam = minetest.get_content_id("default:stone_with_diamond")
-	local c_stomese = minetest.get_content_id("default:stone_with_mese")
+	local c_mese = minetest.get_content_id("default:mese")
 	local c_stogold = minetest.get_content_id("default:stone_with_gold")
 	local c_stocopp = minetest.get_content_id("default:stone_with_copper")
 	local c_stoiron = minetest.get_content_id("default:stone_with_iron")
 	local c_stocoal = minetest.get_content_id("default:stone_with_coal")
 	local c_sandstone = minetest.get_content_id("default:sandstone")
+	local c_gravel = minetest.get_content_id("default:gravel")
 	
-	local c_wswater = minetest.get_content_id("air")
-	local c_wsstone = minetest.get_content_id("air")
-	local c_wsredstone = minetest.get_content_id("air")
-	local c_wsgrass = minetest.get_content_id("air")
-	local c_wsdrygrass = minetest.get_content_id("air")
-	local c_wsgoldgrass = minetest.get_content_id("air")
-	local c_wsdirt = minetest.get_content_id("air")
-	local c_wscloud = minetest.get_content_id("air")
-	local c_wsdarkcloud = minetest.get_content_id("air")
-	local c_wspermafrost = minetest.get_content_id("air")
-	
-	--local c_air = minetest.get_content_id("air")
-	--local c_water = minetest.get_content_id("default:water_source")
-	--local c_sand = minetest.get_content_id("default:sand")
-	--local c_desand = minetest.get_content_id("default:desert_sand")
-	--local c_snowblock = minetest.get_content_id("default:snowblock")
-	--local c_ice = minetest.get_content_id("default:ice")
-	--local c_dirtsnow = minetest.get_content_id("default:dirt_with_snow")
-	--local c_jungrass = minetest.get_content_id("default:junglegrass")
-	--local c_dryshrub = minetest.get_content_id("default:dry_shrub")
-	--local c_stodiam = minetest.get_content_id("default:stone_with_diamond")
-	--local c_stomese = minetest.get_content_id("default:stone_with_mese")
-	--local c_stogold = minetest.get_content_id("default:stone_with_gold")
-	--local c_stocopp = minetest.get_content_id("default:stone_with_copper")
-	--local c_stoiron = minetest.get_content_id("default:stone_with_iron")
-	--local c_stocoal = minetest.get_content_id("default:stone_with_coal")
-	--local c_sandstone = minetest.get_content_id("default:sandstone")
-	
-	--local c_wswater = minetest.get_content_id("watershed:water")
-	--local c_wsstone = minetest.get_content_id("watershed:stone")
-	--local c_wsredstone = minetest.get_content_id("watershed:redstone")
-	--local c_wsgrass = minetest.get_content_id("watershed:grass")
-	--local c_wsdrygrass = minetest.get_content_id("watershed:drygrass")
-	--local c_wsgoldgrass = minetest.get_content_id("watershed:goldengrass")
-	--local c_wsdirt = minetest.get_content_id("watershed:dirt")
-	--local c_wscloud = minetest.get_content_id("watershed:cloud")
-	--local c_wsdarkcloud = minetest.get_content_id("watershed:darkcloud")
-	--local c_wspermafrost = minetest.get_content_id("watershed:permafrost")
+	local c_wswater = minetest.get_content_id("watershed:water")
+	local c_wsstone = minetest.get_content_id("watershed:stone")
+	local c_wsredstone = minetest.get_content_id("watershed:redstone")
+	local c_wsgrass = minetest.get_content_id("watershed:grass")
+	local c_wsdrygrass = minetest.get_content_id("watershed:drygrass")
+	local c_wsgoldgrass = minetest.get_content_id("watershed:goldengrass")
+	local c_wsdirt = minetest.get_content_id("watershed:dirt")
+	local c_wscloud = minetest.get_content_id("watershed:cloud")
+	local c_wsdarkcloud = minetest.get_content_id("watershed:darkcloud")
+	local c_wspermafrost = minetest.get_content_id("watershed:permafrost")
 	
 	local sidelen = x1 - x0 + 1
 	local chulens = {x=sidelen, y=sidelen, z=sidelen}
 	local minposxyz = {x=x0, y=y0, z=z0}
 	local minposxz = {x=x0, y=z0}
-	local minposy = {x=y0, y=0}
 	
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
@@ -258,12 +252,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
 	local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
 	local nvals_ore = minetest.get_perlin_map(np_ore, chulens):get3dMap_flat(minposxyz)
+	local nvals_strata = minetest.get_perlin_map(np_strata, chulens):get3dMap_flat(minposxyz)
 	
 	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
 	local nvals_cloud = minetest.get_perlin_map(np_cloud, chulens):get2dMap_flat(minposxz)
-	
-	local nvals_strata = minetest.get_perlin_map(np_strata, chulens):get2dMap_flat(minposy)
 	
 	local nixyz = 1
 	local nixz = 1
@@ -337,32 +330,36 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				if density >= tstone and nofis  -- stone cut by fissures
 				or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
 				or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
-					local niy = y - y0 + 1
-					local n_strata = nvals_strata[niy] + n_temp / 4
-					local orethi = nvals_ore[nixyz] * ORETHI
-					if (n_strata >= -0.02 and n_strata <= -0.015)
-					or  (n_strata >= -0.05 and n_strata <= 0.05)
-					or  (n_strata >= 0.2 and n_strata <= 0.25) then
+					local densitystr = nvals_strata[nixyz] / 4 + (STRACEN - y) / TERSCA
+					local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
+					if (densityper >= -0.1 and densityper <= -0.05) -- sandstone strata
+					or  (densityper >= 0.05 and densityper <= 0.1) then
 						data[vi] = c_sandstone
-					elseif biome == 6 then
+					elseif biome == 6 then -- desert stone
 						data[vi] = c_wsredstone
-					elseif n_strata >= 0.9 and n_strata <= 0.9 + orethi
-					and math.random(23) == 2 then
-						data[vi] = c_stodiam
-					elseif n_strata >= 0.6 and n_strata <= 0.6 + orethi
-					and math.random(17) == 2 then
-						data[vi] = c_stogold
-					elseif n_strata >= 0.3 and n_strata <= 0.3 + orethi then
-						data[vi] = c_stocoal
-					elseif n_strata >= -0.3 and n_strata <= -0.3 + orethi
-					and math.random(3) == 2 then
-						data[vi] = c_stoiron
-					elseif n_strata >= -0.6 and n_strata <= -0.6 + orethi
-					and math.random(5) == 2 then
-						data[vi] = c_stocopp
-					elseif n_strata >= -0.9 and n_strata <= -0.9 + orethi
-					and math.random(19) == 2 then
-						data[vi] = c_stomese
+					elseif math.abs(nvals_ore[nixyz]) < ORET then -- if seam
+						if densityper >= 0.9 and densityper <= 0.9 + ORETHI
+						and math.random(23) == 2 then
+							data[vi] = c_stodiam
+						elseif densityper >= 0.8 and densityper <= 0.8 + ORETHI
+						and math.random(17) == 2 then
+							data[vi] = c_stogold
+						elseif densityper >= 0.6 and densityper <= 0.6 + ORETHI * 4 then
+							data[vi] = c_stocoal
+						elseif densityper >= 0.5 and densityper <= 0.5 + ORETHI * 4 then
+							data[vi] = c_gravel
+						elseif densityper >= 0.4 and densityper <= 0.4 + ORETHI * 2
+						and math.random(3) == 2 then
+							data[vi] = c_stoiron
+						elseif densityper >= 0.3 and densityper <= 0.3 + ORETHI * 2
+						and math.random(5) == 2 then
+							data[vi] = c_stocopp
+						elseif densityper >= 0.1 and densityper <= 0.1 + ORETHI
+						and math.random(19) == 2 then
+							data[vi] = c_mese
+						else
+							data[vi] = c_wsstone
+						end
 					else
 						data[vi] = c_wsstone
 					end
