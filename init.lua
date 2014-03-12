@@ -1,10 +1,12 @@
--- watershed 0.2.8 by paramat
+-- watershed 0.2.9 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
+-- 0.2.9 added clay at mid-temperatures
+
 -- TODO
--- clay
+-- fog
 
 -- Parameters
 
@@ -13,7 +15,6 @@ local YMAX = 8000 -- Approximate top of atmosphere / mountains / floatlands
 local TERCEN = 6960 -- Terrain 'centre', average seabed level
 local YWAT = 7024 -- Sea level
 local YCLOUD = 7152 -- Cloud level
-local STRACEN = 7088 -- Strata centre
 
 local TERSCA = 384 -- Vertical terrain scale
 local XLSAMP = 0 -- Extra large scale height variation amplitude
@@ -191,6 +192,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
 	local data = vm:get_data()
 	
+	-- make all nodes air except ores and strata, for testing
+	
 	--local c_air = minetest.get_content_id("air")
 	--local c_water = minetest.get_content_id("air")
 	--local c_sand = minetest.get_content_id("air")
@@ -200,6 +203,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	--local c_dirtsnow = minetest.get_content_id("air")
 	--local c_jungrass = minetest.get_content_id("air")
 	--local c_dryshrub = minetest.get_content_id("air")
+	--local c_clay = minetest.get_content_id("air")
 	
 	--local c_wswater = minetest.get_content_id("air")
 	--local c_wsstone = minetest.get_content_id("air")
@@ -229,6 +233,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_stocoal = minetest.get_content_id("default:stone_with_coal")
 	local c_sandstone = minetest.get_content_id("default:sandstone")
 	local c_gravel = minetest.get_content_id("default:gravel")
+	local c_clay = minetest.get_content_id("default:clay")
 	
 	local c_wswater = minetest.get_content_id("watershed:water")
 	local c_wsstone = minetest.get_content_id("watershed:stone")
@@ -330,7 +335,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				if density >= tstone and nofis  -- stone cut by fissures
 				or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
 				or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
-					local densitystr = nvals_strata[nixyz] / 4 + (STRACEN - y) / TERSCA
+					local densitystr = nvals_strata[nixyz] / 4 + (TERCEN - y) / TERSCA
 					local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
 					if (densityper >= -0.1 and densityper <= -0.05) -- sandstone strata
 					or  (densityper >= 0.05 and densityper <= 0.1) then
@@ -367,9 +372,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					under[si] = 0
 					soil[si] = 0
 				elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
-					if densitybase >= tsand + math.random() * 0.003
+					if y == YWAT - 2 and math.abs(n_temp) < 0.05 then -- clay
+						data[vi] = c_clay
+					elseif densitybase >= tsand + math.random() * 0.003 -- river / seabed sand not cut by fissures
 					or y <= YWAT + 1 + math.random(2) then
-						data[vi] = c_sand -- river / seabed sand not cut by fissures
+						data[vi] = c_sand
 					elseif nofis then -- fine materials cut by fissures
 						if biome == 6 then
 							data[vi] = c_desand
