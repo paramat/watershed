@@ -66,6 +66,7 @@ end
 function watershed_jungletree(x, y, z, area, data)
 	local c_juntree = minetest.get_content_id("default:jungletree")
 	local c_wsjunleaf = minetest.get_content_id("watershed:jungleleaf")
+	local c_wsvine = minetest.get_content_id("watershed:vine")
 	for j = -5, 17 do
 		if j == 11 or j == 17 then
 			for i = -2, 2 do
@@ -73,6 +74,15 @@ function watershed_jungletree(x, y, z, area, data)
 				local vil = area:index(x + i, y + j + math.random(0, 1), z + k)
 				if math.random(5) ~= 2 then
 					data[vil] = c_wsjunleaf
+				end
+			end
+			end
+		elseif j >= 0 then
+			for i = -1, 1 do
+			for k = -1, 1 do
+				if math.abs(i) + math.abs(k) == 1 then
+					local viv = area:index(x + i, y + j, z + k)
+					data[viv] = c_wsvine
 				end
 			end
 			end
@@ -126,37 +136,36 @@ function watershed_grass(data, vi)
 	local c_grass3 = minetest.get_content_id("default:grass_3")
 	local c_grass4 = minetest.get_content_id("default:grass_4")
 	local c_grass5 = minetest.get_content_id("default:grass_5")
-	local rand = math.random(5)
-	if rand == 1 then
+	local ran = math.random(5)
+	if ran == 1 then
 		data[vi] = c_grass1
-	elseif rand == 2 then
+	elseif ran == 2 then
 		data[vi] = c_grass2
-	elseif rand == 3 then
+	elseif ran == 3 then
 		data[vi] = c_grass3
-	elseif rand == 4 then
+	elseif ran == 4 then
 		data[vi] = c_grass4
 	else
 		data[vi] = c_grass5
 	end
 end
 
-function watershed_flower(data, vi)
+function watershed_flower(data, vi, noise)
 	local c_danwhi = minetest.get_content_id("flowers:dandelion_white")
 	local c_danyel = minetest.get_content_id("flowers:dandelion_yellow")
 	local c_rose = minetest.get_content_id("flowers:rose")
 	local c_tulip = minetest.get_content_id("flowers:tulip")
 	local c_geranium = minetest.get_content_id("flowers:geranium")
 	local c_viola = minetest.get_content_id("flowers:viola")
-	local rand = math.random(6)
-	if rand == 1 then
+	if noise > 0.8 then
 		data[vi] = c_danwhi
-	elseif rand == 2 then
+	elseif noise > 0.4 then
 		data[vi] = c_rose
-	elseif rand == 3 then
+	elseif noise > 0 then
 		data[vi] = c_tulip
-	elseif rand == 4 then
+	elseif noise > -0.4 then
 		data[vi] = c_danyel
-	elseif rand == 5 then
+	elseif noise > -0.8 then
 		data[vi] = c_geranium
 	else
 		data[vi] = c_viola

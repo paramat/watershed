@@ -1,12 +1,17 @@
--- watershed 0.2.9 by paramat
+-- watershed 0.2.10 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- 0.2.9 added clay at mid-temperatures
+-- 0.2.10
+-- flower colour areas
+-- faults and cliffs
+-- desert stone as a thin density layer
+-- climbable jungletrees
 
 -- TODO
 -- fog
+-- jungletrees from rainforest mod
 
 -- Parameters
 
@@ -74,6 +79,17 @@ local np_smooth = {
 	seed = 593,
 	octaves = 5,
 	persist = 0.4
+}
+
+-- 3D noise for faults
+
+local np_fault = {
+	offset = 0,
+	scale = 1,
+	spread = {x=512, y=1024, z=512},
+	seed = 14440002,
+	octaves = 6,
+	persist = 0.5
 }
 
 -- 3D noise for fissures
@@ -225,6 +241,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_dirtsnow = minetest.get_content_id("default:dirt_with_snow")
 	local c_jungrass = minetest.get_content_id("default:junglegrass")
 	local c_dryshrub = minetest.get_content_id("default:dry_shrub")
+	local c_danwhi = minetest.get_content_id("flowers:dandelion_white")
+	local c_danyel = minetest.get_content_id("flowers:dandelion_yellow")
+	local c_rose = minetest.get_content_id("flowers:rose")
+	local c_tulip = minetest.get_content_id("flowers:tulip")
+	local c_geranium = minetest.get_content_id("flowers:geranium")
+	local c_viola = minetest.get_content_id("flowers:viola")
 	local c_stodiam = minetest.get_content_id("default:stone_with_diamond")
 	local c_mese = minetest.get_content_id("default:mese")
 	local c_stogold = minetest.get_content_id("default:stone_with_gold")
@@ -253,6 +275,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
+	local nvals_fault = minetest.get_perlin_map(np_fault, chulens):get3dMap_flat(minposxyz)
 	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
 	local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
 	local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
@@ -294,10 +317,16 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local triv = TRIV * (1 - altprop * 1.1)
 				local tsand = TSAND * (1 - altprop * 1.1)
 				local tstone = TSTONE * (1 - math.atan(altprop) * 0.6) -- 1 to 0.05
-				local density = densitybase
-				+ math.abs(nvals_rough[nixyz] * terblen
-				+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
-				
+				local density
+				if nvals_fault[nixyz] >= 0 then
+					density = densitybase
+					+ math.abs(nvals_rough[nixyz] * terblen
+					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
+				else	
+					density = densitybase
+					+ math.abs(nvals_rough[nixyz] * terblen
+					- nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
+				end
 				local nofis = false
 				if density >= 0 then -- if terrain set fissure flag
 					if math.abs(nvals_fissure[nixyz]) > FIST + math.sqrt(density) * FISEXP then
@@ -340,7 +369,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					if (densityper >= -0.1 and densityper <= -0.05) -- sandstone strata
 					or  (densityper >= 0.05 and densityper <= 0.1) then
 						data[vi] = c_sandstone
-					elseif biome == 6 then -- desert stone
+					elseif biome == 6 and density < TSTONE * 3 then -- desert stone
 						data[vi] = c_wsredstone
 					elseif math.abs(nvals_ore[nixyz]) < ORET then -- if seam
 						if densityper >= 0.9 and densityper <= 0.9 + ORETHI
@@ -435,9 +464,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					under[si] = 0
 					soil[si] = 0
 				elseif y == YCLOUD then -- clouds
-					local xrq = 16 * math.floor((x - x0) / 16)
+					local xrq = 16 * math.floor((x - x0) / 16) -- quantise to 16x16 lattice
 					local zrq = 16 * math.floor((z - z0) / 16)
-					local qixz = zrq * 80 + xrq + 1
+					local qixz = zrq * 80 + xrq + 1 -- quantised index
 					if nvals_cloud[qixz] > TCLOUD then
 						local yrq = 16 * math.floor((y - y0) / 16)
 						local qixyz = zrq * 6400 + yrq * 80 + xrq + 1
@@ -452,6 +481,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					soil[si] = 0
 				else -- possible above surface air node
 					if y >= YWAT and under[si] ~= 0 then
+						local fnoise = nvals_fissure[nixyz]
 						if under[si] == 1 then
 							if math.random(121) == 2 then
 								data[viu] = c_dirtsnow
@@ -478,7 +508,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								data[viu] = c_wsgrass
 								if math.random(FLOCHA) == 2 then
 									data[viu] = c_wsgrass
-									watershed_flower(data, vi)
+									watershed_flower(data, vi, fnoise)
 								elseif math.random(FOGCHA) == 2 then
 									data[viu] = c_wsgrass
 									watershed_grass(data, vi)
@@ -496,13 +526,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						elseif under[si] == 4 then
 							data[viu] = c_wsgrass
 							if math.random(FLOCHA) == 2 then
-								watershed_flower(data, vi)
+								watershed_flower(data, vi, fnoise)
 							elseif math.random(GRACHA) == 2 then
-								if math.random(11) == 2 then
-									data[vi] = c_wsgoldgrass
-								else
-									watershed_grass(data, vi)
-								end
+								watershed_grass(data, vi)
 							end
 						elseif under[si] == 8 then
 							if math.random(JUTCHA) == 2 and soil[si] >= 5 then

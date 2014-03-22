@@ -64,7 +64,6 @@ minetest.register_node("watershed:cloud", {
 	pointable = false,
 	diggable = false,
 	buildable_to = true,
-	is_ground_content = false,
 	post_effect_color = {a=64, r=241, g=248, b=255},
 	groups = {not_in_creative_inventory=1},
 })
@@ -80,7 +79,6 @@ minetest.register_node("watershed:darkcloud", {
 	pointable = false,
 	diggable = false,
 	buildable_to = true,
-	is_ground_content = false,
 	post_effect_color = {a=128, r=241, g=248, b=255},
 	groups = {not_in_creative_inventory=1},
 })
@@ -132,6 +130,20 @@ minetest.register_node("watershed:permafrost", {
 	groups = {crumbly=2},
 	drop = "default:dirt",
 	sounds = default.node_sound_dirt_defaults(),
+})
+
+minetest.register_node("watershed:vine", {
+	description = "WS Jungletree Vine",
+	drawtype = "airlike",
+	paramtype = "light",
+	sunlight_propagates = true,
+	walkable = false,
+	climbable = true,
+	pointable = false,
+	diggable = false,
+	buildable_to = true,
+	is_ground_content = false,
+	groups = {not_in_creative_inventory=1},
 })
 
 minetest.register_node("watershed:water", {
