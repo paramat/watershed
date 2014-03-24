@@ -1,32 +1,32 @@
--- watershed 0.2.10 by paramat
+-- watershed 0.2.11 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- 0.2.10
--- flower colour areas
--- faults and cliffs
--- desert stone as a thin density layer
--- climbable jungletrees
+-- 0.2.11
+-- water special tiles re-added
+-- import jungletrees from rainforest mod
+-- XLSAMP set, TERCEN reset, for continent / archipelago testing
 
 -- TODO
 -- fog
--- jungletrees from rainforest mod
+-- singlenode y = 0 realm option
+-- lava, it's own tapering fissure system?
 
 -- Parameters
 
 local YMIN = 6000 -- Approximate base of realm stone
 local YMAX = 8000 -- Approximate top of atmosphere / mountains / floatlands
-local TERCEN = 6960 -- Terrain 'centre', average seabed level
+local TERCEN = 6864 -- Terrain 'centre', average seabed level
 local YWAT = 7024 -- Sea level
 local YCLOUD = 7152 -- Cloud level
 
 local TERSCA = 384 -- Vertical terrain scale
-local XLSAMP = 0 -- Extra large scale height variation amplitude
+local XLSAMP = 0.4 -- Extra large scale height variation amplitude
 local BASAMP = 0.4 -- Base terrain amplitude
 local CANAMP = 0.6 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
-local ATANAMP = 1.2 -- Arctan function amplitude, controls size and number of floatlands / caves
+local ATANAMP = 1.2 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 
 local TSTONE = 0.02-- 0.02 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.015 -- Maximum densitybase threshold for river water

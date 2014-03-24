@@ -66,29 +66,43 @@ end
 function watershed_jungletree(x, y, z, area, data)
 	local c_juntree = minetest.get_content_id("default:jungletree")
 	local c_wsjunleaf = minetest.get_content_id("watershed:jungleleaf")
-	local c_wsvine = minetest.get_content_id("watershed:vine")
-	for j = -5, 17 do
-		if j == 11 or j == 17 then
-			for i = -2, 2 do
+	local c_vine = minetest.get_content_id("watershed:vine")
+	local top = math.random(17,23)
+	local branch = math.floor(top * 0.6)
+	for j = -5, top do
+		if j == top or j == top - 1 or j == branch + 1 or j == branch + 2 then
+			for i = -2, 2 do -- leaves
 			for k = -2, 2 do
-				local vil = area:index(x + i, y + j + math.random(0, 1), z + k)
+				local vi = area:index(x + i, y + j, z + k)
 				if math.random(5) ~= 2 then
-					data[vil] = c_wsjunleaf
+					data[vi] = c_wsjunleaf
 				end
 			end
 			end
-		elseif j >= 0 then
+		elseif j <= -1 or j == top - 2 or j == branch then -- branches, roots
 			for i = -1, 1 do
 			for k = -1, 1 do
-				if math.abs(i) + math.abs(k) == 1 then
-					local viv = area:index(x + i, y + j, z + k)
-					data[viv] = c_wsvine
+				if math.abs(i) + math.abs(k) == 2 then
+					local vi = area:index(x + i, y + j, z + k)
+					data[vi] = c_juntree
 				end
 			end
 			end
 		end
-		local vit = area:index(x, y + j, z)
-		data[vit] = c_juntree
+		if j >= 0 and j <= top - 3 then -- climbable nodes
+			for i = -1, 1 do
+			for k = -1, 1 do
+				if math.abs(i) + math.abs(k) == 1 then
+					local vi = area:index(x + i, y + j, z + k)
+					data[vi] = c_vine
+				end
+			end
+			end
+		end
+		if j >= -1 and j <= top - 3 then -- trunk
+			local vi = area:index(x, y + j, z)
+			data[vi] = c_juntree
+		end
 	end
 end
 

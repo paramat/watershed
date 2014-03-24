@@ -151,7 +151,19 @@ minetest.register_node("watershed:water", {
 	inventory_image = minetest.inventorycube("default_water.png"),
 	drawtype = "liquid",
 	tiles = {
-		{name="default_water_source_animated.png", animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=2.0}}
+		{
+			name="default_water_source_animated.png",
+			animation={type="vertical_frames",
+			aspect_w=16, aspect_h=16, length=2.0}
+		}
+	},
+	special_tiles = {
+		{
+			name="default_water_source_animated.png",
+			animation={type="vertical_frames",
+			aspect_w=16, aspect_h=16, length=2.0},
+			backface_culling = false,
+		}
 	},
 	alpha = WATER_ALPHA,
 	paramtype = "light",
