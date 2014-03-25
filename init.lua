@@ -1,30 +1,27 @@
--- watershed 0.2.11 by paramat
+-- watershed 0.2.12 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- 0.2.11
--- water special tiles re-added
--- import jungletrees from rainforest mod
--- XLSAMP set, TERCEN reset, for continent / archipelago testing
-
+-- 0.2.12 tune TERCEN, TERSCA and amplitudes
+-- fixed and added more sandstone strata
 -- TODO
 -- fog
--- singlenode y = 0 realm option
--- lava, it's own tapering fissure system?
+-- singlenode y = 0 realm option. on spawnplayer teleport to surface, how?
+-- magma with it's own tapering conduit system ... creates vents at the surface
 
 -- Parameters
 
 local YMIN = 6000 -- Approximate base of realm stone
 local YMAX = 8000 -- Approximate top of atmosphere / mountains / floatlands
-local TERCEN = 6864 -- Terrain 'centre', average seabed level
+local TERCEN = 6784 -- Terrain 'centre', average seabed level
 local YWAT = 7024 -- Sea level
 local YCLOUD = 7152 -- Cloud level
 
-local TERSCA = 384 -- Vertical terrain scale
-local XLSAMP = 0.4 -- Extra large scale height variation amplitude
+local TERSCA = 512 -- Vertical terrain scale
+local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 local BASAMP = 0.4 -- Base terrain amplitude
-local CANAMP = 0.6 -- Canyon terrain amplitude
+local CANAMP = 0.4 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
 local ATANAMP = 1.2 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 
@@ -256,6 +253,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_sandstone = minetest.get_content_id("default:sandstone")
 	local c_gravel = minetest.get_content_id("default:gravel")
 	local c_clay = minetest.get_content_id("default:clay")
+	local c_lava = minetest.get_content_id("default:lava_source")
 	
 	local c_wswater = minetest.get_content_id("watershed:water")
 	local c_wsstone = minetest.get_content_id("watershed:stone")
@@ -366,8 +364,13 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
 					local densitystr = nvals_strata[nixyz] / 4 + (TERCEN - y) / TERSCA
 					local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
-					if (densityper >= -0.1 and densityper <= -0.05) -- sandstone strata
-					or  (densityper >= 0.05 and densityper <= 0.1) then
+					if (densityper >= 0 and densityper <= 0.04) -- sandstone strata
+					or (densityper >= 0.2 and densityper <= 0.23)
+					or (densityper >= 0.45 and densityper <= 0.47)
+					or (densityper >= 0.7 and densityper <= 0.73)
+					or (densityper >= 0.75 and densityper <= 0.77)
+					or (densityper >= 0.84 and densityper <= 0.87)
+					or (densityper >= 0.92 and densityper <= 0.95) then
 						data[vi] = c_sandstone
 					elseif biome == 6 and density < TSTONE * 3 then -- desert stone
 						data[vi] = c_wsredstone
