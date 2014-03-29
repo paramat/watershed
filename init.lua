@@ -3,9 +3,7 @@
 -- Depends default
 -- License: code WTFPL
 
--- lower sea level to 160 above TERCEN
--- removed soil table
--- vertical perlinmap overgeneration combined with 'get node' scanning
+-- bugfix missing surface node in tundra
 -- TODO
 -- fog
 -- singlenode y = 0 realm option, on spawnplayer teleport to surface
@@ -575,6 +573,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								data[viu] = c_dirtsnow
 							elseif math.random(121) == 2 then
 								data[viu] = c_ice
+							else
+								data[viu] = c_wsdrygrass
 							end
 						elseif under[si] == 2 then
 							data[viu] = c_dirtsnow
