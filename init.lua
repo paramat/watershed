@@ -1,22 +1,23 @@
--- watershed 0.2.12 by paramat
+-- watershed 0.2.13 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- 0.2.12 tune TERCEN, TERSCA and amplitudes
--- fixed and added more sandstone strata
+-- lower sea level to 160 above TERCEN
+-- removed soil table
+-- vertical perlinmap overgeneration combined with 'get node' scanning
 -- TODO
 -- fog
--- singlenode y = 0 realm option. on spawnplayer teleport to surface, how?
--- magma with it's own tapering conduit system ... creates vents at the surface
+-- singlenode y = 0 realm option, on spawnplayer teleport to surface
+-- magma
 
 -- Parameters
 
 local YMIN = 6000 -- Approximate base of realm stone
 local YMAX = 8000 -- Approximate top of atmosphere / mountains / floatlands
-local TERCEN = 6784 -- Terrain 'centre', average seabed level
-local YWAT = 7024 -- Sea level
-local YCLOUD = 7152 -- Cloud level
+local TERCEN = 6856 -- Terrain 'centre', average seabed level
+local YWAT = 7016 -- Sea level
+local YCLOUD = 7144 -- Cloud level
 
 local TERSCA = 512 -- Vertical terrain scale
 local XLSAMP = 0.2 -- Extra large scale height variation amplitude
@@ -253,7 +254,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_sandstone = minetest.get_content_id("default:sandstone")
 	local c_gravel = minetest.get_content_id("default:gravel")
 	local c_clay = minetest.get_content_id("default:clay")
-	local c_lava = minetest.get_content_id("default:lava_source")
 	
 	local c_wswater = minetest.get_content_id("watershed:water")
 	local c_wsstone = minetest.get_content_id("watershed:stone")
@@ -267,8 +267,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wspermafrost = minetest.get_content_id("watershed:permafrost")
 	
 	local sidelen = x1 - x0 + 1
-	local chulens = {x=sidelen, y=sidelen, z=sidelen}
-	local minposxyz = {x=x0, y=y0, z=z0}
+	local chulens = {x=sidelen, y=sidelen+2, z=sidelen}
+	local minposxyz = {x=x0, y=y0-1, z=z0}
 	local minposxz = {x=x0, y=z0}
 	
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
@@ -284,25 +284,18 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
 	local nvals_cloud = minetest.get_perlin_map(np_cloud, chulens):get2dMap_flat(minposxz)
 	
+	local ungen = false -- ungenerated chunk below?
+	if minetest.get_node({x=x0, y=y0-1, z=z0}).name == "ignore" then
+		ungen = true
+		print ("[watershed] ungen")
+	end
+	
 	local nixyz = 1
 	local nixz = 1
 	local stable = {}
 	local under = {}
-	local soil = {}
 	for z = z0, z1 do -- for each xy plane progressing northwards
-		for x = x0, x1 do
-			local si = x - x0 + 1
-			under[si] = 0
-			soil[si] = 0
-			local nodename = minetest.get_node({x=x,y=y0-1,z=z}).name
-			if nodename == "air"
-			or nodename == "default:water_source" then
-				stable[si] = 0
-			else
-				stable[si] = 2
-			end
-		end
-		for y = y0, y1 do -- for each x row progressing upwards
+		for y = y0 - 1, y1 + 1 do -- for each x row progressing upwards
 			local vi = area:index(x0, y, z)
 			local viu = area:index(x0, y-1, z)
 			for x = x0, x1 do -- for each node do
@@ -332,236 +325,271 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					end
 				end
 				
-				local n_temp = nvals_temp[nixyz] -- get raw temp and humid noise for use with node
-				local n_humid = nvals_humid[nixyz]
-				local biome = false -- select biome for node
-				if n_temp < LOTET then
-					if n_humid < MIDHUT then
-						biome = 1 -- tundra
+				if y == y0 - 1 then -- node layer below chunk
+					if ungen then
+						if density >= 0 then -- if node solid
+							stable[si] = 2
+						else
+							stable[si] = 0
+						end
 					else
-						biome = 2 -- taiga
+						local nodename = minetest.get_node({x=x,y=y,z=z}).name
+						if nodename == "watershed:stone"
+						or nodename == "watershed:redstone"
+						or nodename == "watershed:dirt"
+						or nodename == "watershed:permafrost"
+						or nodename == "default:sandstone"
+						or nodename == "default:sand"
+						or nodename == "default:desert_sand"
+						or nodename == "default:gravel" then
+							stable[si] = 2
+						else
+							stable[si] = 0
+						end
 					end
-				elseif n_temp > HITET then
-					if n_humid < LOHUT then
-						biome = 6 -- desert
-					elseif n_humid > HIHUT then
-						biome = 8 -- rainforest
+				elseif y >= y0 and y <= y1 then -- chunk
+					local n_temp = nvals_temp[nixyz] -- get raw temp and humid noise for use with node
+					local n_humid = nvals_humid[nixyz]
+					local biome = false -- select biome for node
+					if n_temp < LOTET then
+						if n_humid < MIDHUT then
+							biome = 1 -- tundra
+						else
+							biome = 2 -- taiga
+						end
+					elseif n_temp > HITET then
+						if n_humid < LOHUT then
+							biome = 6 -- desert
+						elseif n_humid > HIHUT then
+							biome = 8 -- rainforest
+						else
+							biome = 7 -- savanna
+						end
 					else
-						biome = 7 -- savanna
+						if n_humid < LOHUT then
+							biome = 3 -- dry grassland
+						elseif n_humid > HIHUT then
+							biome = 5 -- deciduous forest
+						else
+							biome = 4 -- grassland
+						end
 					end
-				else
-					if n_humid < LOHUT then
-						biome = 3 -- dry grassland
-					elseif n_humid > HIHUT then
-						biome = 5 -- deciduous forest
-					else
-						biome = 4 -- grassland
-					end
-				end
 				
-				if density >= tstone and nofis  -- stone cut by fissures
-				or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
-				or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
-					local densitystr = nvals_strata[nixyz] / 4 + (TERCEN - y) / TERSCA
-					local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
-					if (densityper >= 0 and densityper <= 0.04) -- sandstone strata
-					or (densityper >= 0.2 and densityper <= 0.23)
-					or (densityper >= 0.45 and densityper <= 0.47)
-					or (densityper >= 0.7 and densityper <= 0.73)
-					or (densityper >= 0.75 and densityper <= 0.77)
-					or (densityper >= 0.84 and densityper <= 0.87)
-					or (densityper >= 0.92 and densityper <= 0.95) then
-						data[vi] = c_sandstone
-					elseif biome == 6 and density < TSTONE * 3 then -- desert stone
-						data[vi] = c_wsredstone
-					elseif math.abs(nvals_ore[nixyz]) < ORET then -- if seam
-						if densityper >= 0.9 and densityper <= 0.9 + ORETHI
-						and math.random(23) == 2 then
-							data[vi] = c_stodiam
-						elseif densityper >= 0.8 and densityper <= 0.8 + ORETHI
-						and math.random(17) == 2 then
-							data[vi] = c_stogold
-						elseif densityper >= 0.6 and densityper <= 0.6 + ORETHI * 4 then
-							data[vi] = c_stocoal
-						elseif densityper >= 0.5 and densityper <= 0.5 + ORETHI * 4 then
-							data[vi] = c_gravel
-						elseif densityper >= 0.4 and densityper <= 0.4 + ORETHI * 2
-						and math.random(3) == 2 then
-							data[vi] = c_stoiron
-						elseif densityper >= 0.3 and densityper <= 0.3 + ORETHI * 2
-						and math.random(5) == 2 then
-							data[vi] = c_stocopp
-						elseif densityper >= 0.1 and densityper <= 0.1 + ORETHI
-						and math.random(19) == 2 then
-							data[vi] = c_mese
+					if density >= tstone and nofis  -- stone cut by fissures
+					or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
+					or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
+						local densitystr = nvals_strata[nixyz] / 4 + (TERCEN - y) / TERSCA
+						local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
+						if (densityper >= 0 and densityper <= 0.04) -- sandstone strata
+						or (densityper >= 0.2 and densityper <= 0.23)
+						or (densityper >= 0.45 and densityper <= 0.47)
+						or (densityper >= 0.7 and densityper <= 0.73)
+						or (densityper >= 0.75 and densityper <= 0.77)
+						or (densityper >= 0.84 and densityper <= 0.87)
+						or (densityper >= 0.92 and densityper <= 0.95) then
+							data[vi] = c_sandstone
+						elseif biome == 6 and density < TSTONE * 3 then -- desert stone
+							data[vi] = c_wsredstone
+						elseif math.abs(nvals_ore[nixyz]) < ORET then -- if seam
+							if densityper >= 0.9 and densityper <= 0.9 + ORETHI
+							and math.random(23) == 2 then
+								data[vi] = c_stodiam
+							elseif densityper >= 0.8 and densityper <= 0.8 + ORETHI
+							and math.random(17) == 2 then
+								data[vi] = c_stogold
+							elseif densityper >= 0.6 and densityper <= 0.6 + ORETHI * 4 then
+								data[vi] = c_stocoal
+							elseif densityper >= 0.5 and densityper <= 0.5 + ORETHI * 4 then
+								data[vi] = c_gravel
+							elseif densityper >= 0.4 and densityper <= 0.4 + ORETHI * 2
+							and math.random(3) == 2 then
+								data[vi] = c_stoiron
+							elseif densityper >= 0.3 and densityper <= 0.3 + ORETHI * 2
+							and math.random(5) == 2 then
+								data[vi] = c_stocopp
+							elseif densityper >= 0.1 and densityper <= 0.1 + ORETHI
+							and math.random(19) == 2 then
+								data[vi] = c_mese
+							else
+								data[vi] = c_wsstone
+							end
 						else
 							data[vi] = c_wsstone
 						end
-					else
-						data[vi] = c_wsstone
-					end
-					stable[si] = stable[si] + 1
-					under[si] = 0
-					soil[si] = 0
-				elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
-					if y == YWAT - 2 and math.abs(n_temp) < 0.05 then -- clay
-						data[vi] = c_clay
-					elseif densitybase >= tsand + math.random() * 0.003 -- river / seabed sand not cut by fissures
-					or y <= YWAT + 1 + math.random(2) then
-						data[vi] = c_sand
-					elseif nofis then -- fine materials cut by fissures
-						if biome == 6 then
-							data[vi] = c_desand
-							under[si] = 6 -- desert
-						elseif biome == 7 then
-							data[vi] = c_wsdirt
-							under[si] = 7 -- savanna
-							soil[si] = soil[si] + 1 -- increment soil if trees within biome
-						elseif biome == 8 then
-							data[vi] = c_wsdirt
-							under[si] = 8 -- rainforest
-							soil[si] = soil[si] + 1
-						elseif biome == 3 then
-							data[vi] = c_wsdirt
-							under[si] = 3 -- dry grassland
-						elseif biome == 4 then
-							data[vi] = c_wsdirt
-							under[si] = 4 -- grassland
-						elseif biome == 5 then
-							data[vi] = c_wsdirt
-							under[si] = 5 -- forest
-							soil[si] = soil[si] + 1
-						elseif biome == 1 then
-							data[vi] = c_wspermafrost
-							under[si] = 1 -- tundra
-						elseif biome == 2 then
-							data[vi] = c_wsdirt
-							under[si] = 2 -- taiga
-							soil[si] = soil[si] + 1
+						stable[si] = stable[si] + 1
+						under[si] = 0
+					elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
+						if y == YWAT - 2 and math.abs(n_temp) < 0.05 then -- clay
+							data[vi] = c_clay
+						elseif densitybase >= tsand + math.random() * 0.003 -- river / seabed sand not cut by fissures
+						or y <= YWAT + 1 + math.random(2) then
+							data[vi] = c_sand
+						elseif nofis then -- fine materials cut by fissures
+							if biome == 6 then
+								data[vi] = c_desand
+								under[si] = 6 -- desert
+							elseif biome == 7 then
+								data[vi] = c_wsdirt
+								under[si] = 7 -- savanna
+							elseif biome == 8 then
+								data[vi] = c_wsdirt
+								under[si] = 8 -- rainforest
+							elseif biome == 3 then
+								data[vi] = c_wsdirt
+								under[si] = 3 -- dry grassland
+							elseif biome == 4 then
+								data[vi] = c_wsdirt
+								under[si] = 4 -- grassland
+							elseif biome == 5 then
+								data[vi] = c_wsdirt
+								under[si] = 5 -- forest
+							elseif biome == 1 then
+								data[vi] = c_wspermafrost
+								under[si] = 1 -- tundra
+							elseif biome == 2 then
+								data[vi] = c_wsdirt
+								under[si] = 2 -- taiga
+							end
+						else -- fissure
+							stable[si] = 0
+							under[si] = 0
 						end
-					else -- fissure
+					elseif y <= YWAT and density < tstone then -- sea water, not in fissures
+						if y == YWAT and n_temp < ICETET then
+							data[vi] = c_ice
+						else
+							data[vi] = c_water
+							if y == YWAT and biome >= 6 and stable[si] >= 1
+							and math.random(PAPCHA) == 2 then -- papyrus in desert and rainforest
+								watershed_papyrus(x, y, z, area, data)
+							end
+						end
 						stable[si] = 0
 						under[si] = 0
-						soil[si] = 0
-					end
-				elseif y <= YWAT and density < tstone then -- sea water, not in fissures
-					if y == YWAT and n_temp < ICETET then
-						data[vi] = c_ice
-					else
-						data[vi] = c_water
-						if y == YWAT and biome >= 6 and stable[si] >= 1
-						and math.random(PAPCHA) == 2 then -- papyrus in desert and rainforest
-							watershed_papyrus(x, y, z, area, data)
+					elseif densitybase >= triv and density < tstone then -- river water, not in fissures
+						if n_temp < ICETET then
+							data[vi] = c_ice
+						else
+							data[vi] = c_wswater
 						end
-					end
-					stable[si] = 0
-					under[si] = 0
-					soil[si] = 0
-				elseif densitybase >= triv and density < tstone then -- river water, not in fissures
-					if n_temp < ICETET then
-						data[vi] = c_ice
-					else
-						data[vi] = c_wswater
-					end
-					stable[si] = 0
-					under[si] = 0
-					soil[si] = 0
-				elseif y == YCLOUD then -- clouds
-					local xrq = 16 * math.floor((x - x0) / 16) -- quantise to 16x16 lattice
-					local zrq = 16 * math.floor((z - z0) / 16)
-					local qixz = zrq * 80 + xrq + 1 -- quantised index
-					if nvals_cloud[qixz] > TCLOUD then
-						local yrq = 16 * math.floor((y - y0) / 16)
-						local qixyz = zrq * 6400 + yrq * 80 + xrq + 1
-						if nvals_humid[qixyz] > DCLOHUT then
-							data[vi] = c_wsdarkcloud
-						elseif nvals_humid[qixyz] > CLOHUT then
-							data[vi] = c_wscloud
+						stable[si] = 0
+						under[si] = 0
+					elseif y == YCLOUD then -- clouds
+						local xrq = 16 * math.floor((x - x0) / 16) -- quantise to 16x16 lattice
+						local zrq = 16 * math.floor((z - z0) / 16)
+						local qixz = zrq * 80 + xrq + 1 -- quantised index
+						if nvals_cloud[qixz] > TCLOUD then
+							local yrq = 16 * math.floor((y - y0) / 16)
+							local qixyz = zrq * 6400 + yrq * 80 + xrq + 1
+							if nvals_humid[qixyz] > DCLOHUT then
+								data[vi] = c_wsdarkcloud
+							elseif nvals_humid[qixyz] > CLOHUT then
+								data[vi] = c_wscloud
+							end
 						end
+						stable[si] = 0
+						under[si] = 0
+					else -- possible above surface air node
+						if y >= YWAT and under[si] ~= 0 then
+							local fnoise = nvals_fissure[nixyz]
+							if under[si] == 1 then
+								if math.random(121) == 2 then
+									data[viu] = c_dirtsnow
+								elseif math.random(121) == 2 then
+									data[viu] = c_ice
+								else
+									data[viu] = c_wsdrygrass
+									if math.random(DRYCHA) == 2 then
+										data[vi] = c_dryshrub
+									end
+								end
+							elseif under[si] == 2 then
+								if n_humid > HIHUT and math.random(PINCHA) == 2 then
+									watershed_pinetree(x, y, z, area, data)
+								else
+									data[viu] = c_dirtsnow
+									data[vi] = c_snowblock
+								end
+							elseif under[si] == 5 then
+								if math.random(APTCHA) == 2 then
+									watershed_appletree(x, y, z, area, data)
+								else
+									data[viu] = c_wsgrass
+									if math.random(FLOCHA) == 2 then
+										data[viu] = c_wsgrass
+										watershed_flower(data, vi, fnoise)
+									elseif math.random(FOGCHA) == 2 then
+										data[viu] = c_wsgrass
+										watershed_grass(data, vi)
+									end
+								end
+							elseif under[si] == 3 then
+								data[viu] = c_wsdrygrass
+								if math.random(GRACHA) == 2 then
+									if math.random(5) == 2 then
+										data[vi] = c_wsgoldgrass
+									else
+										data[vi] = c_dryshrub
+									end
+								end
+							elseif under[si] == 4 then
+								data[viu] = c_wsgrass
+								if math.random(FLOCHA) == 2 then
+									watershed_flower(data, vi, fnoise)
+								elseif math.random(GRACHA) == 2 then
+									watershed_grass(data, vi)
+								end
+							elseif under[si] == 8 then
+								if math.random(JUTCHA) == 2 then
+									watershed_jungletree(x, y, z, area, data)
+								else
+									data[viu] = c_wsgrass
+									if math.random(JUGCHA) == 2 then
+										data[vi] = c_jungrass
+									end
+								end
+							elseif under[si] == 7 then
+								if math.random(ACACHA) == 2 then
+									watershed_acaciatree(x, y, z, area, data)
+								else
+									data[viu] = c_wsdrygrass
+									if math.random(GOGCHA) == 2 then
+										data[vi] = c_wsgoldgrass
+									end
+								end
+							elseif under[si] == 6 and n_temp < HITET + 0.1 then
+								if math.random(CACCHA) == 2 then
+									watershed_cactus(x, y, z, area, data)
+								elseif math.random(DRYCHA) == 2 then
+									data[vi] = c_dryshrub
+								end
+							end
+						end
+						stable[si] = 0
+						under[si] = 0
 					end
-					stable[si] = 0
-					under[si] = 0
-					soil[si] = 0
-				else -- possible above surface air node
-					if y >= YWAT and under[si] ~= 0 then
-						local fnoise = nvals_fissure[nixyz]
-						if under[si] == 1 then
+				elseif y == y1 + 1 then -- plane of nodes above chunk
+					if density < 0 and y >= YWAT + 1 and under[si] ~= 0 then -- if air above fine materials
+						if under[si] == 1 then -- add surface nodes to chunk top layer
 							if math.random(121) == 2 then
 								data[viu] = c_dirtsnow
 							elseif math.random(121) == 2 then
 								data[viu] = c_ice
-							else
-								data[viu] = c_wsdrygrass
-								if math.random(DRYCHA) == 2 then
-									data[vi] = c_dryshrub
-								end
 							end
 						elseif under[si] == 2 then
-							if n_humid > HIHUT and math.random(PINCHA) == 2
-							and soil[si] >= 4 then
-								watershed_pinetree(x, y, z, area, data)
-							else
-								data[viu] = c_dirtsnow
-								data[vi] = c_snowblock
-							end
+							data[viu] = c_dirtsnow
 						elseif under[si] == 5 then
-							if math.random(APTCHA) == 2 and soil[si] >= 2 then
-								watershed_appletree(x, y, z, area, data)
-							else
-								data[viu] = c_wsgrass
-								if math.random(FLOCHA) == 2 then
-									data[viu] = c_wsgrass
-									watershed_flower(data, vi, fnoise)
-								elseif math.random(FOGCHA) == 2 then
-									data[viu] = c_wsgrass
-									watershed_grass(data, vi)
-								end
-							end
+							data[viu] = c_wsgrass
 						elseif under[si] == 3 then
 							data[viu] = c_wsdrygrass
-							if math.random(GRACHA) == 2 then
-								if math.random(5) == 2 then
-									data[vi] = c_wsgoldgrass
-								else
-									data[vi] = c_dryshrub
-								end
-							end
 						elseif under[si] == 4 then
 							data[viu] = c_wsgrass
-							if math.random(FLOCHA) == 2 then
-								watershed_flower(data, vi, fnoise)
-							elseif math.random(GRACHA) == 2 then
-								watershed_grass(data, vi)
-							end
 						elseif under[si] == 8 then
-							if math.random(JUTCHA) == 2 and soil[si] >= 5 then
-								watershed_jungletree(x, y, z, area, data)
-							else
-								data[viu] = c_wsgrass
-								if math.random(JUGCHA) == 2 then
-									data[vi] = c_jungrass
-								end
-							end
+							data[viu] = c_wsgrass
 						elseif under[si] == 7 then
-							if math.random(ACACHA) == 2 and soil[si] >= 3 then
-								watershed_acaciatree(x, y, z, area, data)
-							else
-								data[viu] = c_wsdrygrass
-								if math.random(GOGCHA) == 2 then
-									data[vi] = c_wsgoldgrass
-								end
-							end
-						elseif under[si] == 6 and n_temp < HITET + 0.1 then
-							if math.random(CACCHA) == 2 then
-								watershed_cactus(x, y, z, area, data)
-							elseif math.random(DRYCHA) == 2 then
-								data[vi] = c_dryshrub
-							end
+							data[viu] = c_wsdrygrass
 						end
 					end
-					stable[si] = 0
-					under[si] = 0
-					soil[si] = 0
 				end
 				nixyz = nixyz + 1
 				nixz = nixz + 1
