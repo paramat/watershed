@@ -1,18 +1,21 @@
--- watershed 0.2.13 by paramat
+-- watershed 0.2.14 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- bugfix missing surface node in tundra
+-- new pine tree
+-- magma rises to surface along ridges
+-- lavacooling abms
 -- TODO
+-- all tree heights vary
 -- fog
--- singlenode y = 0 realm option, on spawnplayer teleport to surface
--- magma
+-- register bucket water lava
+-- singlenode option
 
 -- Parameters
 
-local YMIN = 6000 -- Approximate base of realm stone
-local YMAX = 8000 -- Approximate top of atmosphere / mountains / floatlands
+local YMIN = 5000 -- Approximate base of realm stone
+local YMAX = 9000 -- Approximate top of atmosphere / mountains / floatlands
 local TERCEN = 6856 -- Terrain 'centre', average seabed level
 local YWAT = 7016 -- Sea level
 local YCLOUD = 7144 -- Cloud level
@@ -24,9 +27,10 @@ local CANAMP = 0.4 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
 local ATANAMP = 1.2 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 
-local TSTONE = 0.02-- 0.02 -- Density threshold for stone, depth of soil at TERCEN
+local TSTONE = 0.01 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.015 -- Maximum densitybase threshold for river water
 local TSAND = -0.018 -- Maximum densitybase threshold for river sand
+local TLAVA = 2 -- Maximum densitybase threshold for lava
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.001 -- Ore seam thickness tuner
@@ -73,8 +77,8 @@ local np_smooth = {
 	scale = 1,
 	spread = {x=512, y=512, z=512},
 	seed = 593,
-	octaves = 5,
-	persist = 0.4
+	octaves = 6,
+	persist = 0.3
 }
 
 -- 3D noise for faults
@@ -263,6 +267,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
 	local c_wsdarkcloud = minetest.get_content_id("watershed:darkcloud")
 	local c_wspermafrost = minetest.get_content_id("watershed:permafrost")
+	local c_wslava = minetest.get_content_id("watershed:lava")
 	
 	local sidelen = x1 - x0 + 1
 	local chulens = {x=sidelen, y=sidelen+2, z=sidelen}
@@ -306,6 +311,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local triv = TRIV * (1 - altprop * 1.1)
 				local tsand = TSAND * (1 - altprop * 1.1)
 				local tstone = TSTONE * (1 - math.atan(altprop) * 0.6) -- 1 to 0.05
+				local tlava = TLAVA * (1 - terblen ^ 10)
 				local density
 				if nvals_fault[nixyz] >= 0 then
 					density = densitybase
@@ -373,7 +379,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 					end
 				
-					if density >= tstone and nofis  -- stone cut by fissures
+					if density >= TSTONE and densitybase >= tlava then
+						data[vi] = c_wslava
+						stable[si] = 0
+						under[si] = 0
+					elseif density >= tstone and nofis  -- stone cut by fissures
 					or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
 					or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
 						local densitystr = nvals_strata[nixyz] / 4 + (TERCEN - y) / TERSCA

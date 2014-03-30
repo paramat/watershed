@@ -179,7 +179,7 @@ minetest.register_node("watershed:water", {
 	liquid_alternative_source = "watershed:water",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 3,
+	liquid_range = 2,
 	post_effect_color = {a=64, r=100, g=100, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1},
 })
@@ -216,7 +216,80 @@ minetest.register_node("watershed:waterflow", {
 	liquid_alternative_source = "watershed:water",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 3,
+	liquid_range = 2,
 	post_effect_color = {a=64, r=100, g=100, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1, not_in_creative_inventory=1},
+})
+
+minetest.register_node("watershed:lava", {
+	description = "WS Lava Source",
+	inventory_image = minetest.inventorycube("default_lava.png"),
+	drawtype = "liquid",
+	tiles = {
+		{name="default_lava_source_animated.png", animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=3.0}}
+	},
+	special_tiles = {
+		{
+			name="default_lava_source_animated.png",
+			animation={type="vertical_frames",
+			aspect_w=16, aspect_h=16, length=3.0},
+			backface_culling = false,
+		}
+	},
+	paramtype = "light",
+	light_source = 14,
+	walkable = false,
+	pointable = false,
+	diggable = false,
+	buildable_to = true,
+	drop = "",
+	drowning = 1,
+	liquidtype = "source",
+	liquid_alternative_flowing = "watershed:lavaflow",
+	liquid_alternative_source = "watershed:lava",
+	liquid_viscosity = LAVA_VISC,
+	liquid_renewable = false,
+	liquid_range = 0,
+	damage_per_second = 8,
+	post_effect_color = {a=192, r=255, g=64, b=0},
+	groups = {lava=3, liquid=2, hot=3, igniter=1},
+})
+
+minetest.register_node("watershed:lavaflow", {
+	description = "WS Flowing Lava",
+	inventory_image = minetest.inventorycube("default_lava.png"),
+	drawtype = "flowingliquid",
+	tiles = {"default_lava.png"},
+	special_tiles = {
+		{
+			image="default_lava_flowing_animated.png",
+			backface_culling=false,
+			animation={type="vertical_frames",
+			aspect_w=16, aspect_h=16, length=3.3}
+		},
+		{
+			image="default_lava_flowing_animated.png",
+			backface_culling=true,
+			animation={type="vertical_frames",
+			aspect_w=16, aspect_h=16, length=3.3}
+		},
+	},
+	paramtype = "light",
+	paramtype2 = "flowingliquid",
+	light_source = 14,
+	walkable = false,
+	pointable = false,
+	diggable = false,
+	buildable_to = true,
+	drop = "",
+	drowning = 1,
+	liquidtype = "flowing",
+	liquid_alternative_flowing = "watershed:lavaflow",
+	liquid_alternative_source = "watershed:lava",
+	liquid_viscosity = LAVA_VISC,
+	liquid_renewable = false,
+	liquid_range = 0,
+	damage_per_second = 8,
+	post_effect_color = {a=192, r=255, g=64, b=0},
+	groups = {lava=3, liquid=2, hot=3, igniter=1, not_in_creative_inventory=1},
 })

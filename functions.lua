@@ -24,7 +24,7 @@ function watershed_pinetree(x, y, z, area, data)
 	local c_tree = minetest.get_content_id("default:tree")
 	local c_wsneedles = minetest.get_content_id("watershed:needles")
 	local c_snowblock = minetest.get_content_id("default:snowblock")
-	for j = -4, 13 do
+	for j = -4, 14 do
 		if j == 3 or j == 6 or j == 9 or j == 12 then
 			for i = -2, 2 do
 			for k = -2, 2 do
@@ -38,7 +38,7 @@ function watershed_pinetree(x, y, z, area, data)
 				end
 			end
 			end
-		elseif j == 4 or j == 7 or j == 10 or j == 13 then
+		elseif j == 4 or j == 7 or j == 10 then
 			for i = -1, 1 do
 			for k = -1, 1 do
 				if not (i == 0 and j == 0) then
@@ -51,13 +51,28 @@ function watershed_pinetree(x, y, z, area, data)
 				end
 			end
 			end
+		elseif j == 13 then
+			for i = -1, 1 do
+			for k = -1, 1 do
+				if not (i == 0 and j == 0) then
+					if math.random(7) ~= 2 then
+						local vil = area:index(x + i, y + j, z + k)
+						data[vil] = c_wsneedles
+						local vil = area:index(x + i, y + j + 1, z + k)
+						data[vil] = c_wsneedles
+						local vila = area:index(x + i, y + j + 2, z + k)
+						data[vila] = c_snowblock
+					end
+				end
+			end
+			end
 		end
 		local vit = area:index(x, y + j, z)
 		data[vit] = c_tree
 	end
-	local vil = area:index(x, y + 14, z)
-	local vila = area:index(x, y + 15, z)
-	local vilaa = area:index(x, y + 16, z)
+	local vil = area:index(x, y + 15, z)
+	local vila = area:index(x, y + 16, z)
+	local vilaa = area:index(x, y + 17, z)
 	data[vil] = c_wsneedles
 	data[vila] = c_wsneedles
 	data[vilaa] = c_snowblock
@@ -206,3 +221,27 @@ function watershed_papyrus(x, y, z, area, data)
 		data[vip] = c_papyrus
 	end
 end
+
+-- ABMs
+
+minetest.register_abm({
+	nodenames = {"watershed:lavaflow"},
+	neighbors = {"group:water"},
+	interval = 1,
+	chance = 11,
+	action = function(pos, node, active_object_count, active_object_count_wider)
+		minetest.set_node(pos, {name="watershed:stone"})
+		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
+	end,
+})
+
+minetest.register_abm({
+	nodenames = {"watershed:lava"},
+	neighbors = {"group:water"},
+	interval = 1,
+	chance = 11,
+	action = function(pos, node, active_object_count, active_object_count_wider)
+		minetest.set_node(pos, {name="default:obsidian"})
+		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
+	end,
+})
