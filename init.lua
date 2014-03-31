@@ -3,14 +3,14 @@
 -- Depends default
 -- License: code WTFPL
 
--- register bucket water lava
--- remove leaves from leafdecay, grass function
--- appleleaf mod node
--- TODO
+-- greener freshwater in rivers
 -- magma rising at ridges
+-- lavacooling
+-- turquiose freshwater in rivers
+-- TODO
 -- all tree heights vary
 -- fog
--- singlenode option
+-- singlenode game version
 
 -- Parameters
 
@@ -30,6 +30,7 @@ local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floa
 local TSTONE = 0.01 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.015 -- Maximum densitybase threshold for river water
 local TSAND = -0.018 -- Maximum densitybase threshold for river sand
+local TLAVA = 1
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.001 -- Ore seam thickness tuner
@@ -179,6 +180,17 @@ local np_cloud = {
 	persist = 0.7
 }
 
+-- 2D noise for magma
+
+local np_magma = {
+	offset = 0,
+	scale = 1,
+	spread = {x=128, y=128, z=128},
+	seed = -13,
+	octaves = 1,
+	persist = 0.5
+}
+
 -- Stuff
 
 watershed = {}
@@ -286,11 +298,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
 	local nvals_cloud = minetest.get_perlin_map(np_cloud, chulens):get2dMap_flat(minposxz)
+	local nvals_magma = minetest.get_perlin_map(np_magma, chulens):get2dMap_flat(minposxz)
 	
 	local ungen = false -- ungenerated chunk below?
 	if minetest.get_node({x=x0, y=y0-1, z=z0}).name == "ignore" then
 		ungen = true
-		print ("[watershed] ungen")
 	end
 	
 	local nixyz = 1
@@ -311,6 +323,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local triv = TRIV * (1 - altprop * 1.1)
 				local tsand = TSAND * (1 - altprop * 1.1)
 				local tstone = TSTONE * (1 - math.atan(altprop) * 0.6) -- 1 to 0.05
+				local tlava = TLAVA * (0.9 - nvals_magma[nixz] ^ 4 * terblen ^ 16)
 				local density
 				if nvals_fault[nixyz] >= 0 then
 					density = densitybase
@@ -378,7 +391,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 					end
 				
-					if density >= tstone and nofis  -- stone cut by fissures
+					if density >= tstone and densitybase >= tlava then
+						data[vi] = c_wslava
+						stable[si] = 0
+						under[si] = 0
+					elseif density >= tstone and nofis  -- stone cut by fissures
 					or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
 					or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
 						local densitystr = nvals_strata[nixyz] / 4 + (TERCEN - y) / TERSCA

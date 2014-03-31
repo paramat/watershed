@@ -162,18 +162,18 @@ minetest.register_node("watershed:vine", {
 
 minetest.register_node("watershed:water", {
 	description = "WS Water Source",
-	inventory_image = minetest.inventorycube("default_water.png"),
+	inventory_image = minetest.inventorycube("watershed_water.png"),
 	drawtype = "liquid",
 	tiles = {
 		{
-			name="default_water_source_animated.png",
+			name="watershed_wateranim.png",
 			animation={type="vertical_frames",
 			aspect_w=16, aspect_h=16, length=2.0}
 		}
 	},
 	special_tiles = {
 		{
-			name="default_water_source_animated.png",
+			name="watershed_wateranim.png",
 			animation={type="vertical_frames",
 			aspect_w=16, aspect_h=16, length=2.0},
 			backface_culling = false,
@@ -200,17 +200,17 @@ minetest.register_node("watershed:water", {
 
 minetest.register_node("watershed:waterflow", {
 	description = "WS Flowing Water",
-	inventory_image = minetest.inventorycube("default_water.png"),
+	inventory_image = minetest.inventorycube("watershed_water.png"),
 	drawtype = "flowingliquid",
 	tiles = {"default_water.png"},
 	special_tiles = {
 		{
-			image="default_water_flowing_animated.png",
+			image="watershed_waterflowanim.png",
 			backface_culling=false,
 			animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=0.8}
 		},
 		{
-			image="default_water_flowing_animated.png",
+			image="watershed_waterflowanim.png",
 			backface_culling=true,
 			animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=0.8}
 		},

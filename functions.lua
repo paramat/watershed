@@ -226,3 +226,27 @@ minetest.register_craft({
 	burntime = 60,
 	replacements = {{"watershed:bucket_lava", "bucket:bucket_empty"}},
 })
+
+-- ABM
+
+minetest.register_abm({
+	nodenames = {"watershed:lavaflow"},
+	neighbors = {"group:water"},
+	interval = 1,
+	chance = 11,
+	action = function(pos, node, active_object_count, active_object_count_wider)
+		minetest.set_node(pos, {name="watershed:stone"})
+		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
+	end,
+})
+
+minetest.register_abm({
+	nodenames = {"watershed:lava"},
+	neighbors = {"group:water"},
+	interval = 1,
+	chance = 11,
+	action = function(pos, node, active_object_count, active_object_count_wider)
+		minetest.set_node(pos, {name="default:obsidian"})
+		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
+	end,
+})
