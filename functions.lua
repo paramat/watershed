@@ -1,7 +1,7 @@
 function watershed_appletree(x, y, z, area, data)
 	local c_tree = minetest.get_content_id("default:tree")
 	local c_apple = minetest.get_content_id("default:apple")
-	local c_leaves = minetest.get_content_id("default:leaves")
+	local c_wsappleaf = minetest.get_content_id("watershed:appleleaf")
 	for j = -2, 4 do
 		if j >= 1 then
 			for i = -2, 2 do
@@ -9,8 +9,8 @@ function watershed_appletree(x, y, z, area, data)
 				local vil = area:index(x + i, y + j + 1, z + k)
 				if math.random(48) == 2 then
 					data[vil] = c_apple
-				elseif math.random(3) ~= 2 then
-					data[vil] = c_leaves
+				elseif math.random(5) ~= 2 then
+					data[vil] = c_wsappleaf
 				end
 			end
 			end
@@ -124,8 +124,8 @@ end
 function watershed_acaciatree(x, y, z, area, data)
 	local c_tree = minetest.get_content_id("default:tree")
 	local c_leaves = minetest.get_content_id("default:leaves")
-	for j = -3, 7 do
-		if j == 7 then
+	for j = -3, 6 do
+		if j == 6 then
 			for i = -4, 4 do
 			for k = -4, 4 do
 				if not (i == 0 or k == 0) then
@@ -136,14 +136,14 @@ function watershed_acaciatree(x, y, z, area, data)
 				end
 			end
 			end
-		elseif j == 6 then
+		elseif j == 5 then
 			for i = -2, 2, 4 do
 			for k = -2, 2, 4 do
 				local vit = area:index(x + i, y + j, z + k)
 				data[vit] = c_tree
 			end
 			end
-		elseif j == 5 then
+		elseif j == 4 then
 			for i = -1, 1 do
 			for k = -1, 1 do
 				if math.abs(i) + math.abs(k) == 2 then
@@ -156,26 +156,6 @@ function watershed_acaciatree(x, y, z, area, data)
 			local vit = area:index(x, y + j, z)
 			data[vit] = c_tree
 		end
-	end
-end
-
-function watershed_grass(data, vi)
-	local c_grass1 = minetest.get_content_id("default:grass_1")
-	local c_grass2 = minetest.get_content_id("default:grass_2")
-	local c_grass3 = minetest.get_content_id("default:grass_3")
-	local c_grass4 = minetest.get_content_id("default:grass_4")
-	local c_grass5 = minetest.get_content_id("default:grass_5")
-	local ran = math.random(5)
-	if ran == 1 then
-		data[vi] = c_grass1
-	elseif ran == 2 then
-		data[vi] = c_grass2
-	elseif ran == 3 then
-		data[vi] = c_grass3
-	elseif ran == 4 then
-		data[vi] = c_grass4
-	else
-		data[vi] = c_grass5
 	end
 end
 
@@ -222,26 +202,27 @@ function watershed_papyrus(x, y, z, area, data)
 	end
 end
 
--- ABMs
+-- Register buckets, lava fuel
 
-minetest.register_abm({
-	nodenames = {"watershed:lavaflow"},
-	neighbors = {"group:water"},
-	interval = 1,
-	chance = 11,
-	action = function(pos, node, active_object_count, active_object_count_wider)
-		minetest.set_node(pos, {name="watershed:stone"})
-		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
-	end,
-})
+bucket.register_liquid(
+	"watershed:water",
+	"watershed:waterflow",
+	"watershed:bucket_water",
+	"bucket_water.png",
+	"WS Water Bucket"
+)
 
-minetest.register_abm({
-	nodenames = {"watershed:lava"},
-	neighbors = {"group:water"},
-	interval = 1,
-	chance = 11,
-	action = function(pos, node, active_object_count, active_object_count_wider)
-		minetest.set_node(pos, {name="default:obsidian"})
-		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
-	end,
+bucket.register_liquid(
+	"watershed:lava",
+	"watershed:lavaflow",
+	"watershed:bucket_lava",
+	"bucket_lava.png",
+	"WS Lava Bucket"
+)
+
+minetest.register_craft({
+	type = "fuel",
+	recipe = "watershed:bucket_lava",
+	burntime = 60,
+	replacements = {{"watershed:bucket_lava", "bucket:bucket_empty"}},
 })

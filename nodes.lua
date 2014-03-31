@@ -1,8 +1,22 @@
+minetest.register_node("watershed:appleleaf", {
+	description = "WS Appletree Leaves",
+	drawtype = "allfaces_optional",
+	visual_scale = 1.3,
+	tiles = {"default_leaves.png"},
+	paramtype = "light",
+	is_ground_content = false,
+	groups = {snappy=3, flammable=2, leaves=1},
+	sounds = default.node_sound_leaves_defaults(),
+})
+
 minetest.register_node("watershed:needles", {
 	description = "WS Pine Needles",
+	drawtype = "allfaces_optional",
+	visual_scale = 1.3,
 	tiles = {"watershed_needles.png"},
+	paramtype = "light",
 	is_ground_content = false,
-	groups = {snappy=3, leafdecay=3},
+	groups = {snappy=3},
 	sounds = default.node_sound_leaves_defaults(),
 })
 
@@ -13,7 +27,7 @@ minetest.register_node("watershed:jungleleaf", {
 	tiles = {"default_jungleleaves.png"},
 	paramtype = "light",
 	is_ground_content = false,
-	groups = {snappy=3, leafdecay=4, flammable=2, leaves=1},
+	groups = {snappy=3, flammable=2, leaves=1},
 	sounds = default.node_sound_leaves_defaults(),
 })
 
@@ -249,7 +263,7 @@ minetest.register_node("watershed:lava", {
 	liquid_alternative_source = "watershed:lava",
 	liquid_viscosity = LAVA_VISC,
 	liquid_renewable = false,
-	liquid_range = 0,
+	liquid_range = 2,
 	damage_per_second = 8,
 	post_effect_color = {a=192, r=255, g=64, b=0},
 	groups = {lava=3, liquid=2, hot=3, igniter=1},
@@ -288,7 +302,7 @@ minetest.register_node("watershed:lavaflow", {
 	liquid_alternative_source = "watershed:lava",
 	liquid_viscosity = LAVA_VISC,
 	liquid_renewable = false,
-	liquid_range = 0,
+	liquid_range = 2,
 	damage_per_second = 8,
 	post_effect_color = {a=192, r=255, g=64, b=0},
 	groups = {lava=3, liquid=2, hot=3, igniter=1, not_in_creative_inventory=1},

@@ -1,15 +1,15 @@
--- watershed 0.2.14 by paramat
+-- watershed 0.2.15 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- new pine tree
--- magma rises to surface along ridges
--- lavacooling abms
+-- register bucket water lava
+-- remove leaves from leafdecay, grass function
+-- appleleaf mod node
 -- TODO
+-- magma rising at ridges
 -- all tree heights vary
 -- fog
--- register bucket water lava
 -- singlenode option
 
 -- Parameters
@@ -25,24 +25,23 @@ local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 local BASAMP = 0.4 -- Base terrain amplitude
 local CANAMP = 0.4 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
-local ATANAMP = 1.2 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 
 local TSTONE = 0.01 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.015 -- Maximum densitybase threshold for river water
 local TSAND = -0.018 -- Maximum densitybase threshold for river sand
-local TLAVA = 2 -- Maximum densitybase threshold for lava
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.001 -- Ore seam thickness tuner
 local ORET = 0.02 -- Ore threshold for seam
 local TCLOUD = 0.5 -- Cloud threshold
 
-local HITET = 0.5 -- High temperature threshold
-local LOTET = -0.5 -- Low ..
+local HITET = 0.4 -- High temperature threshold
+local LOTET = -0.4 -- Low ..
 local ICETET = -0.8 -- Ice ..
-local HIHUT = 0.5 -- High humidity threshold
+local HIHUT = 0.4 -- High humidity threshold
 local MIDHUT = 0 -- Mid ..
-local LOHUT = -0.5 -- Low ..
+local LOHUT = -0.4 -- Low ..
 local CLOHUT = 0 -- Cloud humidity threshold
 local DCLOHUT = 1 -- Dark cloud ..
 
@@ -256,6 +255,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_sandstone = minetest.get_content_id("default:sandstone")
 	local c_gravel = minetest.get_content_id("default:gravel")
 	local c_clay = minetest.get_content_id("default:clay")
+	local c_grass5 = minetest.get_content_id("default:grass_5")
 	
 	local c_wswater = minetest.get_content_id("watershed:water")
 	local c_wsstone = minetest.get_content_id("watershed:stone")
@@ -311,7 +311,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local triv = TRIV * (1 - altprop * 1.1)
 				local tsand = TSAND * (1 - altprop * 1.1)
 				local tstone = TSTONE * (1 - math.atan(altprop) * 0.6) -- 1 to 0.05
-				local tlava = TLAVA * (1 - terblen ^ 10)
 				local density
 				if nvals_fault[nixyz] >= 0 then
 					density = densitybase
@@ -379,11 +378,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 					end
 				
-					if density >= TSTONE and densitybase >= tlava then
-						data[vi] = c_wslava
-						stable[si] = 0
-						under[si] = 0
-					elseif density >= tstone and nofis  -- stone cut by fissures
+					if density >= tstone and nofis  -- stone cut by fissures
 					or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
 					or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
 						local densitystr = nvals_strata[nixyz] / 4 + (TERCEN - y) / TERSCA
@@ -528,7 +523,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 										watershed_flower(data, vi, fnoise)
 									elseif math.random(FOGCHA) == 2 then
 										data[viu] = c_wsgrass
-										watershed_grass(data, vi)
+										data[vi] = c_grass5
 									end
 								end
 							elseif under[si] == 3 then
@@ -545,7 +540,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								if math.random(FLOCHA) == 2 then
 									watershed_flower(data, vi, fnoise)
 								elseif math.random(GRACHA) == 2 then
-									watershed_grass(data, vi)
+										data[vi] = c_grass5
 								end
 							elseif under[si] == 8 then
 								if math.random(JUTCHA) == 2 then
