@@ -123,7 +123,7 @@ end
 
 function watershed_acaciatree(x, y, z, area, data)
 	local c_tree = minetest.get_content_id("default:tree")
-	local c_leaves = minetest.get_content_id("default:leaves")
+	local c_wsaccleaf = minetest.get_content_id("watershed:acacialeaf")
 	for j = -3, 6 do
 		if j == 6 then
 			for i = -4, 4 do
@@ -131,7 +131,7 @@ function watershed_acaciatree(x, y, z, area, data)
 				if not (i == 0 or k == 0) then
 					if math.random(5) ~= 2 then
 						local vil = area:index(x + i, y + j, z + k)
-						data[vil] = c_leaves
+						data[vil] = c_wsaccleaf
 					end
 				end
 			end
@@ -208,7 +208,7 @@ bucket.register_liquid(
 	"watershed:water",
 	"watershed:waterflow",
 	"watershed:bucket_water",
-	"bucket_water.png",
+	"watershed_bucketwater.png",
 	"WS Water Bucket"
 )
 
@@ -250,3 +250,143 @@ minetest.register_abm({
 		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
 	end,
 })
+
+-- Set mapgen parameters
+
+minetest.register_on_mapgen_init(function(mgparams)
+	minetest.set_mapgen_params({mgname="singlenode", flags = "nolight", flagmask = "nolight"})
+end)
+
+-- Spawn player
+
+function spawnplayer(player)
+	local TERCEN = -160 -- Terrain 'centre', average seabed level
+	local TERSCA = 512 -- Vertical terrain scale
+	local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+	local XLSAMP = 0.2 -- Extra large scale height variation amplitude
+	local BASAMP = 0.4 -- Base terrain amplitude
+	local CANAMP = 0.4 -- Canyon terrain amplitude
+	local CANEXP = 1.33 -- Canyon shape exponent
+	local xsp
+	local ysp
+	local zsp
+	local np_rough = {
+		offset = 0,
+		scale = 1,
+		spread = {x=512, y=512, z=512},
+		seed = 593,
+		octaves = 6,
+		persist = 0.63
+	}
+	local np_smooth = {
+		offset = 0,
+		scale = 1,
+		spread = {x=512, y=512, z=512},
+		seed = 593,
+		octaves = 6,
+		persist = 0.3
+	}
+	local np_fault = {
+		offset = 0,
+		scale = 1,
+		spread = {x=512, y=1024, z=512},
+		seed = 14440002,
+		octaves = 6,
+		persist = 0.5
+	}
+	local np_base = {
+		offset = 0,
+		scale = 1,
+		spread = {x=4096, y=4096, z=4096},
+		seed = 8890,
+		octaves = 4,
+		persist = 0.4
+	}
+	local np_xlscale = {
+		offset = 0,
+		scale = 1,
+		spread = {x=8192, y=8192, z=8192},
+		seed = -72,
+		octaves = 3,
+		persist = 0.4
+	}
+	for chunk = 1, 64 do
+		local xr = math.random(-2000, 2000)
+		local zr = math.random(-2000, 2000)
+		print ("[watershed] xr "..xr)
+		print ("[watershed] zr "..zr)
+		local x0 = math.floor((80 * math.floor((xr + 32) / 80)) - 32)
+		local z0 = math.floor((80 * math.floor((zr + 32) / 80)) - 32)
+		local y0 = -32
+		local x1 = x0 + 79
+		local z1 = z0 + 79
+		local y1 = 47
+		
+		local sidelen = 80
+		local chulens = {x=sidelen, y=sidelen, z=sidelen}
+		local minposxyz = {x=x0, y=y0, z=z0}
+		local minposxz = {x=x0, y=z0}
+	
+		local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
+		local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
+		local nvals_fault = minetest.get_perlin_map(np_fault, chulens):get3dMap_flat(minposxyz)
+	
+		local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
+		local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
+		
+		local nixz = 1
+		local nixyz = 1
+		for z = z0, z1 do
+			for y = y0, y1 do
+				for x = x0, x1 do
+					local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
+					local n_base = nvals_base[nixz]
+					local terblen = math.max(1 - math.abs(n_base), 0)
+					local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
+					local density
+					if nvals_fault[nixyz] >= 0 then
+						density = densitybase
+						+ math.abs(nvals_rough[nixyz] * terblen
+						+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
+					else	
+						density = densitybase
+						+ math.abs(nvals_rough[nixyz] * terblen
+						- nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
+					end
+					if y >= 1 and density > -0.01 and density < 0 then
+						ysp = y + 2
+						xsp = x
+						zsp = z
+						break
+					end
+					nixz = nixz + 1
+					nixyz = nixyz + 1
+				end
+				if ysp then
+					break
+				end
+				nixz = nixz - 80
+			end
+			if ysp then
+				break
+			end
+			nixz = nixz + 80
+		end
+		if ysp then
+			break
+		end
+	end
+	print ("[watershed] xsp "..xsp)
+	print ("[watershed] ysp "..ysp)
+	print ("[watershed] zsp "..zsp)
+	player:setpos({x=xsp, y=ysp, z=zsp})
+end
+
+minetest.register_on_newplayer(function(player)
+	spawnplayer(player)
+end)
+
+minetest.register_on_respawnplayer(function(player)
+	spawnplayer(player)
+	return true
+end)

@@ -9,6 +9,17 @@ minetest.register_node("watershed:appleleaf", {
 	sounds = default.node_sound_leaves_defaults(),
 })
 
+minetest.register_node("watershed:acacialeaf", {
+	description = "WS Acacia Leaves",
+	drawtype = "allfaces_optional",
+	visual_scale = 1.3,
+	tiles = {"default_leaves.png"},
+	paramtype = "light",
+	is_ground_content = false,
+	groups = {snappy=3, flammable=2, leaves=1},
+	sounds = default.node_sound_leaves_defaults(),
+})
+
 minetest.register_node("watershed:needles", {
 	description = "WS Pine Needles",
 	drawtype = "allfaces_optional",

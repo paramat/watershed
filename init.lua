@@ -1,24 +1,21 @@
--- watershed 0.2.15 by paramat
+-- watershed 0.2.16 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- greener freshwater in rivers
--- magma rising at ridges
--- lavacooling
--- turquiose freshwater in rivers
+-- acacialeaf
 -- TODO
 -- all tree heights vary
 -- fog
--- singlenode game version
+-- singlenode and then game version
 
 -- Parameters
 
-local YMIN = 5000 -- Approximate base of realm stone
-local YMAX = 9000 -- Approximate top of atmosphere / mountains / floatlands
-local TERCEN = 6856 -- Terrain 'centre', average seabed level
-local YWAT = 7016 -- Sea level
-local YCLOUD = 7144 -- Cloud level
+local YMIN = -33000 -- Approximate base of realm stone
+local YMAX = 33000 -- Approximate top of atmosphere / mountains / floatlands
+local TERCEN = -160 -- Terrain 'centre', average seabed level
+local YWAT = 1 -- Sea surface y
+local YCLOUD = 128 -- Cloud level
 
 local TERSCA = 512 -- Vertical terrain scale
 local XLSAMP = 0.2 -- Extra large scale height variation amplitude
@@ -30,7 +27,7 @@ local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floa
 local TSTONE = 0.01 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.015 -- Maximum densitybase threshold for river water
 local TSAND = -0.018 -- Maximum densitybase threshold for river sand
-local TLAVA = 1
+local TLAVA = 2 -- Maximum densitybase threshold for lava
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.001 -- Ore seam thickness tuner
@@ -624,7 +621,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	end
 	
 	vm:set_data(data)
-	vm:set_lighting({day=0, night=0})
+	-- vm:set_lighting({day=0, night=0})
 	vm:calc_lighting()
 	vm:write_to_map(data)
 	local chugent = math.ceil((os.clock() - t1) * 1000)
