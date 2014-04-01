@@ -29,7 +29,7 @@ function watershed_pinetree(x, y, z, area, data)
 			for i = -2, 2 do
 			for k = -2, 2 do
 				if math.abs(i) == 2 or math.abs(k) == 2 then
-					if math.random(5) ~= 2 then
+					if math.random(7) ~= 2 then
 						local vil = area:index(x + i, y + j, z + k)
 						data[vil] = c_wsneedles
 						local vila = area:index(x + i, y + j + 1, z + k)
@@ -42,7 +42,7 @@ function watershed_pinetree(x, y, z, area, data)
 			for i = -1, 1 do
 			for k = -1, 1 do
 				if not (i == 0 and j == 0) then
-					if math.random(7) ~= 2 then
+					if math.random(11) ~= 2 then
 						local vil = area:index(x + i, y + j, z + k)
 						data[vil] = c_wsneedles
 						local vila = area:index(x + i, y + j + 1, z + k)
@@ -55,14 +55,12 @@ function watershed_pinetree(x, y, z, area, data)
 			for i = -1, 1 do
 			for k = -1, 1 do
 				if not (i == 0 and j == 0) then
-					if math.random(7) ~= 2 then
-						local vil = area:index(x + i, y + j, z + k)
-						data[vil] = c_wsneedles
-						local vil = area:index(x + i, y + j + 1, z + k)
-						data[vil] = c_wsneedles
-						local vila = area:index(x + i, y + j + 2, z + k)
-						data[vila] = c_snowblock
-					end
+					local vil = area:index(x + i, y + j, z + k)
+					data[vil] = c_wsneedles
+					local vila = area:index(x + i, y + j + 1, z + k)
+					data[vila] = c_wsneedles
+					local vilaa = area:index(x + i, y + j + 2, z + k)
+					data[vilaa] = c_snowblock
 				end
 			end
 			end
@@ -129,7 +127,7 @@ function watershed_acaciatree(x, y, z, area, data)
 			for i = -4, 4 do
 			for k = -4, 4 do
 				if not (i == 0 or k == 0) then
-					if math.random(5) ~= 2 then
+					if math.random(7) ~= 2 then
 						local vil = area:index(x + i, y + j, z + k)
 						data[vil] = c_wsaccleaf
 					end
@@ -227,7 +225,7 @@ minetest.register_craft({
 	replacements = {{"watershed:bucket_lava", "bucket:bucket_empty"}},
 })
 
--- ABM
+-- Lavacooling
 
 minetest.register_abm({
 	nodenames = {"watershed:lavaflow"},
@@ -310,13 +308,10 @@ function spawnplayer(player)
 		octaves = 3,
 		persist = 0.4
 	}
-	for chunk = 1, 64 do
-		local xr = math.random(-2000, 2000)
-		local zr = math.random(-2000, 2000)
-		print ("[watershed] xr "..xr)
-		print ("[watershed] zr "..zr)
-		local x0 = math.floor((80 * math.floor((xr + 32) / 80)) - 32)
-		local z0 = math.floor((80 * math.floor((zr + 32) / 80)) - 32)
+	for chunk = 1, 32 do
+		print ("[watershed] chunk "..chunk)
+		local x0 = 80 * math.random(-24, 24) - 32
+		local z0 = 80 * math.random(-24, 24) - 32
 		local y0 = -32
 		local x1 = x0 + 79
 		local z1 = z0 + 79
@@ -354,7 +349,7 @@ function spawnplayer(player)
 						- nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
 					end
 					if y >= 1 and density > -0.01 and density < 0 then
-						ysp = y + 2
+						ysp = y
 						xsp = x
 						zsp = z
 						break
@@ -376,9 +371,7 @@ function spawnplayer(player)
 			break
 		end
 	end
-	print ("[watershed] xsp "..xsp)
-	print ("[watershed] ysp "..ysp)
-	print ("[watershed] zsp "..zsp)
+	print ("[watershed] spawn player ("..xsp.." "..ysp.." "..zsp..")")
 	player:setpos({x=xsp, y=ysp, z=zsp})
 end
 

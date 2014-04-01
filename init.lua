@@ -1,13 +1,13 @@
--- watershed 0.2.16 by paramat
+-- watershed 0.3.0 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- acacialeaf
+-- add snowy plains biome
 -- TODO
--- all tree heights vary
+-- lava at surface: volcanic cone?
+-- tree heights vary
 -- fog
--- singlenode and then game version
 
 -- Parameters
 
@@ -38,7 +38,6 @@ local HITET = 0.4 -- High temperature threshold
 local LOTET = -0.4 -- Low ..
 local ICETET = -0.8 -- Ice ..
 local HIHUT = 0.4 -- High humidity threshold
-local MIDHUT = 0 -- Mid ..
 local LOHUT = -0.4 -- Low ..
 local CLOHUT = 0 -- Cloud humidity threshold
 local DCLOHUT = 1 -- Dark cloud ..
@@ -365,26 +364,28 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					local n_humid = nvals_humid[nixyz]
 					local biome = false -- select biome for node
 					if n_temp < LOTET then
-						if n_humid < MIDHUT then
+						if n_humid < LOHUT then
 							biome = 1 -- tundra
+						elseif n_humid > HIHUT then
+							biome = 3 -- taiga
 						else
-							biome = 2 -- taiga
+							biome = 2 -- snowy plains
 						end
 					elseif n_temp > HITET then
 						if n_humid < LOHUT then
-							biome = 6 -- desert
+							biome = 7 -- desert
 						elseif n_humid > HIHUT then
-							biome = 8 -- rainforest
+							biome = 9 -- rainforest
 						else
-							biome = 7 -- savanna
+							biome = 8 -- savanna
 						end
 					else
 						if n_humid < LOHUT then
-							biome = 3 -- dry grassland
+							biome = 4 -- dry grassland
 						elseif n_humid > HIHUT then
-							biome = 5 -- deciduous forest
+							biome = 6 -- deciduous forest
 						else
-							biome = 4 -- grassland
+							biome = 5 -- grassland
 						end
 					end
 				
@@ -405,7 +406,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						or (densityper >= 0.84 and densityper <= 0.87)
 						or (densityper >= 0.92 and densityper <= 0.95) then
 							data[vi] = c_sandstone
-						elseif biome == 6 and density < TSTONE * 3 then -- desert stone
+						elseif biome == 7 and density < TSTONE * 3 then -- desert stone
 							data[vi] = c_wsredstone
 						elseif math.abs(nvals_ore[nixyz]) < ORET then -- if seam
 							if densityper >= 0.9 and densityper <= 0.9 + ORETHI
@@ -442,30 +443,33 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						or y <= YWAT + 1 + math.random(2) then
 							data[vi] = c_sand
 						elseif nofis then -- fine materials cut by fissures
-							if biome == 6 then
-								data[vi] = c_desand
-								under[si] = 6 -- desert
-							elseif biome == 7 then
-								data[vi] = c_wsdirt
-								under[si] = 7 -- savanna
-							elseif biome == 8 then
-								data[vi] = c_wsdirt
-								under[si] = 8 -- rainforest
-							elseif biome == 3 then
-								data[vi] = c_wsdirt
-								under[si] = 3 -- dry grassland
-							elseif biome == 4 then
-								data[vi] = c_wsdirt
-								under[si] = 4 -- grassland
-							elseif biome == 5 then
-								data[vi] = c_wsdirt
-								under[si] = 5 -- forest
-							elseif biome == 1 then
+							if biome == 1 then
 								data[vi] = c_wspermafrost
 								under[si] = 1 -- tundra
 							elseif biome == 2 then
 								data[vi] = c_wsdirt
-								under[si] = 2 -- taiga
+								under[si] = 2 -- snowy plains
+							elseif biome == 3 then
+								data[vi] = c_wsdirt
+								under[si] = 3 -- taiga
+							elseif biome == 4 then
+								data[vi] = c_wsdirt
+								under[si] = 4 -- dry grassland
+							elseif biome == 5 then
+								data[vi] = c_wsdirt
+								under[si] = 5 -- grassland
+							elseif biome == 6 then
+								data[vi] = c_wsdirt
+								under[si] = 6 -- forest
+							elseif biome == 7 then
+								data[vi] = c_desand
+								under[si] = 7 -- desert
+							elseif biome == 8 then
+								data[vi] = c_wsdirt
+								under[si] = 8 -- savanna
+							elseif biome == 9 then
+								data[vi] = c_wsdirt
+								under[si] = 9 -- rainforest
 							end
 						else -- fissure
 							stable[si] = 0
@@ -476,7 +480,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							data[vi] = c_ice
 						else
 							data[vi] = c_water
-							if y == YWAT and biome >= 6 and stable[si] >= 1
+							if y == YWAT and biome >= 7 and stable[si] >= 1
 							and math.random(PAPCHA) == 2 then -- papyrus in desert and rainforest
 								watershed_papyrus(x, y, z, area, data)
 							end
@@ -521,13 +525,32 @@ minetest.register_on_generated(function(minp, maxp, seed)
 									end
 								end
 							elseif under[si] == 2 then
-								if n_humid > HIHUT and math.random(PINCHA) == 2 then
+								data[viu] = c_dirtsnow
+								data[vi] = c_snowblock
+							elseif under[si] == 3 then
+								if math.random(PINCHA) == 2 then
 									watershed_pinetree(x, y, z, area, data)
 								else
 									data[viu] = c_dirtsnow
 									data[vi] = c_snowblock
 								end
+							elseif under[si] == 4 then
+								data[viu] = c_wsdrygrass
+								if math.random(GRACHA) == 2 then
+									if math.random(5) == 2 then
+										data[vi] = c_wsgoldgrass
+									else
+										data[vi] = c_dryshrub
+									end
+								end
 							elseif under[si] == 5 then
+								data[viu] = c_wsgrass
+								if math.random(FLOCHA) == 2 then
+									watershed_flower(data, vi, fnoise)
+								elseif math.random(GRACHA) == 2 then
+										data[vi] = c_grass5
+								end
+							elseif under[si] == 6 then
 								if math.random(APTCHA) == 2 then
 									watershed_appletree(x, y, z, area, data)
 								else
@@ -540,32 +563,13 @@ minetest.register_on_generated(function(minp, maxp, seed)
 										data[vi] = c_grass5
 									end
 								end
-							elseif under[si] == 3 then
-								data[viu] = c_wsdrygrass
-								if math.random(GRACHA) == 2 then
-									if math.random(5) == 2 then
-										data[vi] = c_wsgoldgrass
-									else
-										data[vi] = c_dryshrub
-									end
-								end
-							elseif under[si] == 4 then
-								data[viu] = c_wsgrass
-								if math.random(FLOCHA) == 2 then
-									watershed_flower(data, vi, fnoise)
-								elseif math.random(GRACHA) == 2 then
-										data[vi] = c_grass5
+							elseif under[si] == 7 and n_temp < HITET + 0.1 then
+								if math.random(CACCHA) == 2 then
+									watershed_cactus(x, y, z, area, data)
+								elseif math.random(DRYCHA) == 2 then
+									data[vi] = c_dryshrub
 								end
 							elseif under[si] == 8 then
-								if math.random(JUTCHA) == 2 then
-									watershed_jungletree(x, y, z, area, data)
-								else
-									data[viu] = c_wsgrass
-									if math.random(JUGCHA) == 2 then
-										data[vi] = c_jungrass
-									end
-								end
-							elseif under[si] == 7 then
 								if math.random(ACACHA) == 2 then
 									watershed_acaciatree(x, y, z, area, data)
 								else
@@ -574,11 +578,14 @@ minetest.register_on_generated(function(minp, maxp, seed)
 										data[vi] = c_wsgoldgrass
 									end
 								end
-							elseif under[si] == 6 and n_temp < HITET + 0.1 then
-								if math.random(CACCHA) == 2 then
-									watershed_cactus(x, y, z, area, data)
-								elseif math.random(DRYCHA) == 2 then
-									data[vi] = c_dryshrub
+							elseif under[si] == 9 then
+								if math.random(JUTCHA) == 2 then
+									watershed_jungletree(x, y, z, area, data)
+								else
+									data[viu] = c_wsgrass
+									if math.random(JUGCHA) == 2 then
+										data[vi] = c_jungrass
+									end
 								end
 							end
 						end
