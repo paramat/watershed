@@ -1,11 +1,14 @@
--- watershed 0.3.0 by paramat
+-- watershed 0.3.1 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- add snowy plains biome
+-- bugfixes
+-- optional mod clouds
+-- stacked realm / singlenode option
+-- volcanoes
 -- TODO
--- lava at surface: volcanic cone?
+-- check river continuous over faults
 -- tree heights vary
 -- fog
 
@@ -16,6 +19,7 @@ local YMAX = 33000 -- Approximate top of atmosphere / mountains / floatlands
 local TERCEN = -160 -- Terrain 'centre', average seabed level
 local YWAT = 1 -- Sea surface y
 local YCLOUD = 128 -- Cloud level
+local CLOUDS = false
 
 local TERSCA = 512 -- Vertical terrain scale
 local XLSAMP = 0.2 -- Extra large scale height variation amplitude
@@ -24,7 +28,7 @@ local CANAMP = 0.4 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
 local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 
-local TSTONE = 0.01 -- Density threshold for stone, depth of soil at TERCEN
+local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.015 -- Maximum densitybase threshold for river water
 local TSAND = -0.018 -- Maximum densitybase threshold for river sand
 local TLAVA = 2 -- Maximum densitybase threshold for lava
@@ -34,16 +38,16 @@ local ORETHI = 0.001 -- Ore seam thickness tuner
 local ORET = 0.02 -- Ore threshold for seam
 local TCLOUD = 0.5 -- Cloud threshold
 
-local HITET = 0.4 -- High temperature threshold
-local LOTET = -0.4 -- Low ..
-local ICETET = -0.8 -- Ice ..
-local HIHUT = 0.4 -- High humidity threshold
-local LOHUT = -0.4 -- Low ..
+local HITET = 0.35 -- High temperature threshold
+local LOTET = -0.35 -- Low ..
+local ICETET = -0.7 -- Ice ..
+local HIHUT = 0.35 -- High humidity threshold
+local LOHUT = -0.35 -- Low ..
 local CLOHUT = 0 -- Cloud humidity threshold
 local DCLOHUT = 1 -- Dark cloud ..
 
-local PINCHA = 47 -- Pine tree 1/x chance per node
-local APTCHA = 47 -- Appletree
+local PINCHA = 49 -- Pine tree 1/x chance per node
+local APTCHA = 49 -- Appletree
 local FLOCHA = 36 -- Flower
 local FOGCHA = 9 -- Forest grass
 local GRACHA = 3 -- Grassland grasses
@@ -52,7 +56,7 @@ local JUGCHA = 9 -- Junglegrass
 local CACCHA = 841 -- Cactus
 local DRYCHA = 169 -- Dry shrub
 local PAPCHA = 3 -- Papyrus
-local ACACHA = 841 -- Acacia tree
+local ACACHA = 529 -- Acacia tree
 local GOGCHA = 3 -- Golden grass
 
 -- 3D noise for rough terrain
@@ -183,7 +187,7 @@ local np_magma = {
 	scale = 1,
 	spread = {x=128, y=128, z=128},
 	seed = -13,
-	octaves = 1,
+	octaves = 2,
 	persist = 0.5
 }
 
@@ -264,6 +268,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_gravel = minetest.get_content_id("default:gravel")
 	local c_clay = minetest.get_content_id("default:clay")
 	local c_grass5 = minetest.get_content_id("default:grass_5")
+	local c_obsidian = minetest.get_content_id("default:obsidian")
 	
 	local c_wswater = minetest.get_content_id("watershed:water")
 	local c_wsstone = minetest.get_content_id("watershed:stone")
@@ -316,10 +321,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local terblen = math.max(1 - math.abs(n_base), 0)
 				local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
 				local altprop = (y - YWAT) / (TERCEN + TERSCA - YWAT)
-				local triv = TRIV * (1 - altprop * 1.1)
-				local tsand = TSAND * (1 - altprop * 1.1)
+				local triv = TRIV * (1 - terblen)
+				local tsand = TSAND * (1 - terblen * 1.1)
 				local tstone = TSTONE * (1 - math.atan(altprop) * 0.6) -- 1 to 0.05
-				local tlava = TLAVA * (0.9 - nvals_magma[nixz] ^ 4 * terblen ^ 16)
+				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16)
 				local density
 				if nvals_fault[nixyz] >= 0 then
 					density = densitybase
@@ -389,9 +394,15 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 					end
 				
-					if density >= tstone and densitybase >= tlava then
-						data[vi] = c_wslava
+					if densitybase >= tlava then
+						if densitybase >= -0.05 then
+							data[vi] = c_wslava
+						end
 						stable[si] = 0
+						under[si] = 0
+					elseif densitybase >= tlava - 0.5 and densitybase >= -0.1 then
+						data[vi] = c_obsidian
+						stable[si] = 1
 						under[si] = 0
 					elseif density >= tstone and nofis  -- stone cut by fissures
 					or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
@@ -495,7 +506,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif y == YCLOUD then -- clouds
+					elseif CLOUDS and y == YCLOUD then -- clouds
 						local xrq = 16 * math.floor((x - x0) / 16) -- quantise to 16x16 lattice
 						local zrq = 16 * math.floor((z - z0) / 16)
 						local qixz = zrq * 80 + xrq + 1 -- quantised index
@@ -604,16 +615,18 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							end
 						elseif under[si] == 2 then
 							data[viu] = c_dirtsnow
+						elseif under[si] == 3 then
+							data[viu] = c_dirtsnow
+						elseif under[si] == 4 then
+							data[viu] = c_wsdrygrass
 						elseif under[si] == 5 then
 							data[viu] = c_wsgrass
-						elseif under[si] == 3 then
-							data[viu] = c_wsdrygrass
-						elseif under[si] == 4 then
+						elseif under[si] == 6 then
 							data[viu] = c_wsgrass
 						elseif under[si] == 8 then
-							data[viu] = c_wsgrass
-						elseif under[si] == 7 then
 							data[viu] = c_wsdrygrass
+						elseif under[si] == 9 then
+							data[viu] = c_wsgrass
 						end
 					end
 				end
