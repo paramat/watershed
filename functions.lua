@@ -3,7 +3,7 @@ function watershed_appletree(x, y, z, area, data)
 	local c_apple = minetest.get_content_id("default:apple")
 	local c_wsappleaf = minetest.get_content_id("watershed:appleleaf")
 	for j = -2, 4 do
-		if j == 3 then
+		if j == 2 or j == 3 then
 			for i = -2, 2 do
 			for k = -2, 2 do
 				local vil = area:index(x + i, y + j + 1, z + k)
@@ -14,7 +14,7 @@ function watershed_appletree(x, y, z, area, data)
 				end
 			end
 			end
-		elseif j == 2 or j == 4 then
+		elseif j == 1 or j == 4 then
 			for i = -1, 1 do
 			for k = -1, 1 do
 				if math.random(5) ~= 2 then
@@ -234,30 +234,6 @@ minetest.register_craft({
 	replacements = {{"watershed:bucket_lava", "bucket:bucket_empty"}},
 })
 
--- Lavacooling
-
-minetest.register_abm({
-	nodenames = {"watershed:lavaflow"},
-	neighbors = {"group:water"},
-	interval = 1,
-	chance = 11,
-	action = function(pos, node, active_object_count, active_object_count_wider)
-		minetest.set_node(pos, {name="watershed:stone"})
-		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
-	end,
-})
-
-minetest.register_abm({
-	nodenames = {"watershed:lava"},
-	neighbors = {"group:water"},
-	interval = 1,
-	chance = 11,
-	action = function(pos, node, active_object_count, active_object_count_wider)
-		minetest.set_node(pos, {name="default:obsidian"})
-		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
-	end,
-})
-
 -- Singlenode mapgen option
 
 local SINGLENODE = true
@@ -360,10 +336,10 @@ if SINGLENODE then
 						else	
 							density = densitybase
 							+ math.abs(nvals_rough[nixyz] * terblen
-							- nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
+							+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * 0.7
 						end
 						if y >= 1 and density > -0.01 and density < 0 then
-							ysp = y
+							ysp = y + 1
 							xsp = x
 							zsp = z
 							break

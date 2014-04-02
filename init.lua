@@ -1,11 +1,12 @@
--- watershed 0.3.2 by paramat
+-- watershed 0.3.3 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
+-- remove lavacooling abms
+-- new appletree
+-- rivers continuous over faults
 -- TODO
--- river continuous over faults?
--- tree heights vary
 -- fog
 
 -- Parameters
@@ -27,7 +28,7 @@ local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floa
 local TSTONE = 0.03 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.02 -- Maximum densitybase threshold for river water
 local TSAND = -0.025 -- Maximum densitybase threshold for river sand
-local TLAVA = 2 -- Maximum densitybase threshold for lava
+local TLAVA = 10 -- Maximum densitybase threshold for lava
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.001 -- Ore seam thickness tuner
@@ -183,7 +184,7 @@ local np_magma = {
 	scale = 1,
 	spread = {x=128, y=128, z=128},
 	seed = -13,
-	octaves = 3,
+	octaves = 2,
 	persist = 0.5
 }
 
@@ -316,20 +317,21 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local n_base = nvals_base[nixz]
 				local terblen = math.max(1 - math.abs(n_base), 0)
 				local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
-				--local altprop = (y - YWAT) / (TERCEN + TERSCA - YWAT)
 				local triv = TRIV * (1 - terblen)
 				local tsand = TSAND * (1 - terblen)
 				local tstone = TSTONE * (1 + grad)
-				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16 * 0.7)
+				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16)
+				local n_temp = nvals_temp[nixyz]
+				local n_humid = nvals_humid[nixyz]
 				local density
 				if nvals_fault[nixyz] >= 0 then
 					density = densitybase
 					+ math.abs(nvals_rough[nixyz] * terblen
-					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
+					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * (1 + n_temp * 0.5)
 				else	
 					density = densitybase
 					+ math.abs(nvals_rough[nixyz] * terblen
-					- nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
+					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * (1 + n_humid * 0.5)
 				end
 				local nofis = false
 				if density >= 0 then -- if terrain set fissure flag
@@ -361,8 +363,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 					end
 				elseif y >= y0 and y <= y1 then -- chunk
-					local n_temp = nvals_temp[nixyz] -- get raw temp and humid noise for use with node
-					local n_humid = nvals_humid[nixyz]
 					local biome = false -- select biome for node
 					if n_temp < LOTET then
 						if n_humid < LOHUT then
@@ -391,12 +391,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					end
 				
 					if densitybase >= tlava then
-						if densitybase >= -0.033 then
+						if densitybase >= 0 then
 							data[vi] = c_wslava
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif densitybase >= tlava - math.min(1 + densitybase * 10, 1) then
+					elseif densitybase >= tlava - math.min(2 + density * 20, 2) and density < tstone then
 						data[vi] = c_obsidian
 						stable[si] = 1
 						under[si] = 0
