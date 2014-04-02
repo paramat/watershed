@@ -1,14 +1,10 @@
--- watershed 0.3.1 by paramat
+-- watershed 0.3.2 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- bugfixes
--- optional mod clouds
--- stacked realm / singlenode option
--- volcanoes
 -- TODO
--- check river continuous over faults
+-- river continuous over faults?
 -- tree heights vary
 -- fog
 
@@ -28,9 +24,9 @@ local CANAMP = 0.4 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
 local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 
-local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
-local TRIV = -0.015 -- Maximum densitybase threshold for river water
-local TSAND = -0.018 -- Maximum densitybase threshold for river sand
+local TSTONE = 0.03 -- Density threshold for stone, depth of soil at TERCEN
+local TRIV = -0.02 -- Maximum densitybase threshold for river water
+local TSAND = -0.025 -- Maximum densitybase threshold for river sand
 local TLAVA = 2 -- Maximum densitybase threshold for lava
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
@@ -180,14 +176,14 @@ local np_cloud = {
 	persist = 0.7
 }
 
--- 2D noise for magma
+-- 2D noise for magma surface
 
 local np_magma = {
 	offset = 0,
 	scale = 1,
 	spread = {x=128, y=128, z=128},
 	seed = -13,
-	octaves = 2,
+	octaves = 3,
 	persist = 0.5
 }
 
@@ -320,11 +316,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local n_base = nvals_base[nixz]
 				local terblen = math.max(1 - math.abs(n_base), 0)
 				local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
-				local altprop = (y - YWAT) / (TERCEN + TERSCA - YWAT)
+				--local altprop = (y - YWAT) / (TERCEN + TERSCA - YWAT)
 				local triv = TRIV * (1 - terblen)
-				local tsand = TSAND * (1 - terblen * 1.1)
-				local tstone = TSTONE * (1 - math.atan(altprop) * 0.6) -- 1 to 0.05
-				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16)
+				local tsand = TSAND * (1 - terblen)
+				local tstone = TSTONE * (1 + grad)
+				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16 * 0.7)
 				local density
 				if nvals_fault[nixyz] >= 0 then
 					density = densitybase
@@ -395,12 +391,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					end
 				
 					if densitybase >= tlava then
-						if densitybase >= -0.05 then
+						if densitybase >= -0.033 then
 							data[vi] = c_wslava
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif densitybase >= tlava - 0.5 and densitybase >= -0.1 then
+					elseif densitybase >= tlava - math.min(1 + densitybase * 10, 1) then
 						data[vi] = c_obsidian
 						stable[si] = 1
 						under[si] = 0

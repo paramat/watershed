@@ -3,13 +3,22 @@ function watershed_appletree(x, y, z, area, data)
 	local c_apple = minetest.get_content_id("default:apple")
 	local c_wsappleaf = minetest.get_content_id("watershed:appleleaf")
 	for j = -2, 4 do
-		if j >= 1 then
+		if j == 3 then
 			for i = -2, 2 do
 			for k = -2, 2 do
 				local vil = area:index(x + i, y + j + 1, z + k)
 				if math.random(48) == 2 then
 					data[vil] = c_apple
 				elseif math.random(5) ~= 2 then
+					data[vil] = c_wsappleaf
+				end
+			end
+			end
+		elseif j == 2 or j == 4 then
+			for i = -1, 1 do
+			for k = -1, 1 do
+				if math.random(5) ~= 2 then
+					local vil = area:index(x + i, y + j + 1, z + k)
 					data[vil] = c_wsappleaf
 				end
 			end
@@ -314,7 +323,7 @@ if SINGLENODE then
 			persist = 0.4
 		}
 		for chunk = 1, 32 do
-			print ("[watershed] chunk "..chunk)
+			print ("[watershed] searching for spawn "..chunk)
 			local x0 = 80 * math.random(-24, 24) - 32
 			local z0 = 80 * math.random(-24, 24) - 32
 			local y0 = -32
