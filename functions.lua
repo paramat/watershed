@@ -242,7 +242,7 @@ if SINGLENODE then
 	-- Set mapgen parameters
 
 	minetest.register_on_mapgen_init(function(mgparams)
-		minetest.set_mapgen_params({mgname="singlenode", flags = "nolight", flagmask = "nolight"})
+		minetest.set_mapgen_params({mgname="singlenode"})
 	end)
 
 	-- Spawn player
@@ -298,6 +298,22 @@ if SINGLENODE then
 			octaves = 3,
 			persist = 0.4
 		}
+		local np_temp = {
+			offset = 0,
+			scale = 1,
+			spread = {x=512, y=512, z=512},
+			seed = 9130,
+			octaves = 2,
+			persist = 0.5
+		}
+		local np_humid = {
+			offset = 0,
+			scale = 1,
+			spread = {x=512, y=512, z=512},
+			seed = -55500,
+			octaves = 2,
+			persist = 0.5
+		}
 		for chunk = 1, 32 do
 			print ("[watershed] searching for spawn "..chunk)
 			local x0 = 80 * math.random(-24, 24) - 32
@@ -315,6 +331,8 @@ if SINGLENODE then
 			local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 			local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
 			local nvals_fault = minetest.get_perlin_map(np_fault, chulens):get3dMap_flat(minposxyz)
+			local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
+			local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
 	
 			local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 			local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
@@ -326,17 +344,19 @@ if SINGLENODE then
 					for x = x0, x1 do
 						local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
 						local n_base = nvals_base[nixz]
-						local terblen = math.max(1 - math.abs(n_base), 0)
 						local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
+						local terblen = math.max(1 - math.abs(n_base), 0)
+						local n_temp = nvals_temp[nixyz]
+						local n_humid = nvals_humid[nixyz]
 						local density
 						if nvals_fault[nixyz] >= 0 then
 							density = densitybase
 							+ math.abs(nvals_rough[nixyz] * terblen
-							+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
+							+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * (1 + n_temp * 0.5)
 						else	
 							density = densitybase
 							+ math.abs(nvals_rough[nixyz] * terblen
-							+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * 0.7
+							+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * (1 + n_humid * 0.5)
 						end
 						if y >= 1 and density > -0.01 and density < 0 then
 							ysp = y + 1

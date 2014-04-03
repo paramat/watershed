@@ -1,11 +1,11 @@
--- watershed 0.3.3 by paramat
+-- watershed 0.3.4 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default
 -- License: code WTFPL
 
--- remove lavacooling abms
--- new appletree
--- rivers continuous over faults
+-- no flagmask for compatibility with 0.4.9dev
+-- tune volcanos
+-- lava flows again
 -- TODO
 -- fog
 
@@ -28,7 +28,8 @@ local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floa
 local TSTONE = 0.03 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.02 -- Maximum densitybase threshold for river water
 local TSAND = -0.025 -- Maximum densitybase threshold for river sand
-local TLAVA = 10 -- Maximum densitybase threshold for lava
+local TLAVA = 2.5 -- Maximum densitybase threshold for lava, small because grad is non-linear
+local VOLC = 0.5 -- Amount of volcanos
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.001 -- Ore seam thickness tuner
@@ -211,34 +212,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local z0 = minp.z
 	
 	print ("[watershed] chunk minp ("..x0.." "..y0.." "..z0..")")
-	
+	-- voxelmanip stuff
 	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
 	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
 	local data = vm:get_data()
-	
-	-- make all nodes air except ores and strata, for testing
-	
-	--local c_air = minetest.get_content_id("air")
-	--local c_water = minetest.get_content_id("air")
-	--local c_sand = minetest.get_content_id("air")
-	--local c_desand = minetest.get_content_id("air")
-	--local c_snowblock = minetest.get_content_id("air")
-	--local c_ice = minetest.get_content_id("air")
-	--local c_dirtsnow = minetest.get_content_id("air")
-	--local c_jungrass = minetest.get_content_id("air")
-	--local c_dryshrub = minetest.get_content_id("air")
-	--local c_clay = minetest.get_content_id("air")
-	
-	--local c_wswater = minetest.get_content_id("air")
-	--local c_wsstone = minetest.get_content_id("air")
-	--local c_wsredstone = minetest.get_content_id("air")
-	--local c_wsgrass = minetest.get_content_id("air")
-	--local c_wsdrygrass = minetest.get_content_id("air")
-	--local c_wsgoldgrass = minetest.get_content_id("air")
-	--local c_wsdirt = minetest.get_content_id("air")
-	--local c_wscloud = minetest.get_content_id("air")
-	--local c_wsdarkcloud = minetest.get_content_id("air")
-	--local c_wspermafrost = minetest.get_content_id("air")
 	
 	local c_air = minetest.get_content_id("air")
 	local c_water = minetest.get_content_id("default:water_source")
@@ -278,7 +255,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wsdarkcloud = minetest.get_content_id("watershed:darkcloud")
 	local c_wspermafrost = minetest.get_content_id("watershed:permafrost")
 	local c_wslava = minetest.get_content_id("watershed:lava")
-	
+	-- perlinmap stuff
 	local sidelen = x1 - x0 + 1
 	local chulens = {x=sidelen, y=sidelen+2, z=sidelen}
 	local minposxyz = {x=x0, y=y0-1, z=z0}
@@ -302,25 +279,22 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	if minetest.get_node({x=x0, y=y0-1, z=z0}).name == "ignore" then
 		ungen = true
 	end
-	
+	-- mapgen loop
 	local nixyz = 1
 	local nixz = 1
-	local stable = {}
-	local under = {}
+	local stable = {} -- stability table of true/false. is node stable and supported from below by stone or nodes on stone?
+	local under = {} -- biome table. biome number of previous fine material placed in column
 	for z = z0, z1 do -- for each xy plane progressing northwards
 		for y = y0 - 1, y1 + 1 do -- for each x row progressing upwards
 			local vi = area:index(x0, y, z)
 			local viu = area:index(x0, y-1, z)
 			for x = x0, x1 do -- for each node do
-				local si = x - x0 + 1
-				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
+				local si = x - x0 + 1 -- stable, under tables index
+				
+				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP -- get densitybase and density
 				local n_base = nvals_base[nixz]
-				local terblen = math.max(1 - math.abs(n_base), 0)
 				local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
-				local triv = TRIV * (1 - terblen)
-				local tsand = TSAND * (1 - terblen)
-				local tstone = TSTONE * (1 + grad)
-				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16)
+				local terblen = math.max(1 - math.abs(n_base), 0)
 				local n_temp = nvals_temp[nixyz]
 				local n_humid = nvals_humid[nixyz]
 				local density
@@ -333,6 +307,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					+ math.abs(nvals_rough[nixyz] * terblen
 					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * (1 + n_humid * 0.5)
 				end
+				
+				local triv = TRIV * (1 - terblen) -- other values
+				local tsand = TSAND * (1 - terblen)
+				local tstone = TSTONE * (1 + grad)
+				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16 * VOLC)
 				local nofis = false
 				if density >= 0 then -- if terrain set fissure flag
 					if math.abs(nvals_fissure[nixyz]) > FIST + math.sqrt(density) * FISEXP then
@@ -390,13 +369,13 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 					end
 				
-					if densitybase >= tlava then
+					if densitybase >= tlava then -- lava
 						if densitybase >= 0 then
 							data[vi] = c_wslava
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif densitybase >= tlava - math.min(2 + density * 20, 2) and density < tstone then
+					elseif densitybase >= tlava - math.min(1 + density * 10, 1) and density < tstone then -- obsidian
 						data[vi] = c_obsidian
 						stable[si] = 1
 						under[si] = 0
@@ -635,11 +614,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 		end
 		nixz = nixz + 80
 	end
-	
+	-- voxelmanip stuff
 	vm:set_data(data)
-	-- vm:set_lighting({day=0, night=0})
+	vm:set_lighting({day=0, night=0})
 	vm:calc_lighting()
 	vm:write_to_map(data)
-	local chugent = math.ceil((os.clock() - t1) * 1000)
+	
+	local chugent = math.ceil((os.clock() - t1) * 1000) -- chunk generation time
 	print ("[watershed] "..chugent.." ms")
 end)
