@@ -250,7 +250,7 @@ if SINGLENODE then
 	function spawnplayer(player)
 		local TERCEN = -160 -- Terrain 'centre', average seabed level
 		local TERSCA = 512 -- Vertical terrain scale
-		local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+		local ATANAMP = 1.2 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 		local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 		local BASAMP = 0.4 -- Base terrain amplitude
 		local CANAMP = 0.4 -- Canyon terrain amplitude

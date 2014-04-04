@@ -1,11 +1,12 @@
--- watershed 0.3.4 by paramat
+-- watershed 0.3.5 by paramat
 -- For latest stable Minetest and back to 0.4.8
--- Depends default
+-- Depends default bucket
 -- License: code WTFPL
 
--- no flagmask for compatibility with 0.4.9dev
 -- tune volcanos
--- lava flows again
+-- retune arctan 'grad'
+-- mod clouds return at y = 256
+-- no dark clouds
 -- TODO
 -- fog
 
@@ -15,21 +16,21 @@ local YMIN = -33000 -- Approximate base of realm stone
 local YMAX = 33000 -- Approximate top of atmosphere / mountains / floatlands
 local TERCEN = -160 -- Terrain 'centre', average seabed level
 local YWAT = 1 -- Sea surface y
-local YCLOUD = 128 -- Cloud level
-local CLOUDS = false
+local YCLOUD = 256 -- Cloud level
+local CLOUDS = true
 
 local TERSCA = 512 -- Vertical terrain scale
 local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 local BASAMP = 0.4 -- Base terrain amplitude
 local CANAMP = 0.4 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
-local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+local ATANAMP = 1.2 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 
 local TSTONE = 0.03 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.02 -- Maximum densitybase threshold for river water
 local TSAND = -0.025 -- Maximum densitybase threshold for river sand
-local TLAVA = 2.5 -- Maximum densitybase threshold for lava, small because grad is non-linear
-local VOLC = 0.5 -- Amount of volcanos
+local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
+local VOLC = 0.5 -- Amount of volcanos, 0.5 = rare, 1 = lots
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.001 -- Ore seam thickness tuner
@@ -41,11 +42,10 @@ local LOTET = -0.35 -- Low ..
 local ICETET = -0.7 -- Ice ..
 local HIHUT = 0.35 -- High humidity threshold
 local LOHUT = -0.35 -- Low ..
-local CLOHUT = 0 -- Cloud humidity threshold
-local DCLOHUT = 1 -- Dark cloud ..
+local CLOHUT = 0.35 -- Cloud humidity threshold
 
-local PINCHA = 49 -- Pine tree 1/x chance per node
-local APTCHA = 49 -- Appletree
+local PINCHA = 36 -- Pine tree 1/x chance per node
+local APTCHA = 36 -- Appletree
 local FLOCHA = 36 -- Flower
 local FOGCHA = 9 -- Forest grass
 local GRACHA = 3 -- Grassland grasses
@@ -252,7 +252,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wsgoldgrass = minetest.get_content_id("watershed:goldengrass")
 	local c_wsdirt = minetest.get_content_id("watershed:dirt")
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
-	local c_wsdarkcloud = minetest.get_content_id("watershed:darkcloud")
 	local c_wspermafrost = minetest.get_content_id("watershed:permafrost")
 	local c_wslava = minetest.get_content_id("watershed:lava")
 	-- perlinmap stuff
@@ -310,7 +309,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				
 				local triv = TRIV * (1 - terblen) -- other values
 				local tsand = TSAND * (1 - terblen)
-				local tstone = TSTONE * (1 + grad)
+				local tstone = TSTONE * (1 + grad * 0.5)
 				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16 * VOLC)
 				local nofis = false
 				if density >= 0 then -- if terrain set fissure flag
@@ -318,7 +317,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						nofis = true
 					end
 				end
-				
+				-- overgeneration and in-chunk generation
 				if y == y0 - 1 then -- node layer below chunk
 					if ungen then
 						if density >= 0 then -- if node solid
@@ -375,7 +374,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif densitybase >= tlava - math.min(1 + density * 10, 1) and density < tstone then -- obsidian
+					elseif densitybase >= tlava - math.min(1.5 + density * 15, 1.5) and density < tstone then -- obsidian
 						data[vi] = c_obsidian
 						stable[si] = 1
 						under[si] = 0
@@ -488,9 +487,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						if nvals_cloud[qixz] > TCLOUD then
 							local yrq = 16 * math.floor((y - y0) / 16)
 							local qixyz = zrq * 6400 + yrq * 80 + xrq + 1
-							if nvals_humid[qixyz] > DCLOHUT then
-								data[vi] = c_wsdarkcloud
-							elseif nvals_humid[qixyz] > CLOHUT then
+							if nvals_humid[qixyz] > CLOHUT then
 								data[vi] = c_wscloud
 							end
 						end

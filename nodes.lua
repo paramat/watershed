@@ -93,21 +93,6 @@ minetest.register_node("watershed:cloud", {
 	groups = {not_in_creative_inventory=1},
 })
 
-minetest.register_node("watershed:darkcloud", {
-	description = "WS Dark Cloud",
-	drawtype = "glasslike",
-	tiles = {"watershed_darkcloud.png"},
-	paramtype = "light",
-	is_ground_content = false,
-	sunlight_propagates = true,
-	walkable = false,
-	pointable = false,
-	diggable = false,
-	buildable_to = true,
-	post_effect_color = {a=128, r=241, g=248, b=255},
-	groups = {not_in_creative_inventory=1},
-})
-
 minetest.register_node("watershed:cactus", {
 	description = "WS Cactus",
 	tiles = {"default_cactus_top.png", "default_cactus_top.png", "default_cactus_side.png"},
@@ -263,6 +248,7 @@ minetest.register_node("watershed:lava", {
 	},
 	paramtype = "light",
 	light_source = 14,
+	is_ground_content = false,
 	walkable = false,
 	pointable = false,
 	diggable = false,
@@ -302,6 +288,7 @@ minetest.register_node("watershed:lavaflow", {
 	paramtype = "light",
 	paramtype2 = "flowingliquid",
 	light_source = 14,
+	is_ground_content = false,
 	walkable = false,
 	pointable = false,
 	diggable = false,
