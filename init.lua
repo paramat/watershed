@@ -3,13 +3,6 @@
 -- Depends default bucket
 -- License: code WTFPL
 
--- tune volcanos
--- retune arctan 'grad'
--- mod clouds return at y = 256
--- no dark clouds
--- TODO
--- fog
-
 -- Parameters
 
 local YMIN = -33000 -- Approximate base of realm stone
@@ -30,7 +23,6 @@ local TSTONE = 0.03 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.02 -- Maximum densitybase threshold for river water
 local TSAND = -0.025 -- Maximum densitybase threshold for river sand
 local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
-local VOLC = 0.5 -- Amount of volcanos, 0.5 = rare, 1 = lots
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.001 -- Ore seam thickness tuner
@@ -310,7 +302,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local triv = TRIV * (1 - terblen) -- other values
 				local tsand = TSAND * (1 - terblen)
 				local tstone = TSTONE * (1 + grad * 0.5)
-				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16 * VOLC)
+				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16 * 0.5)
 				local nofis = false
 				if density >= 0 then -- if terrain set fissure flag
 					if math.abs(nvals_fissure[nixyz]) > FIST + math.sqrt(density) * FISEXP then
@@ -374,7 +366,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif densitybase >= tlava - math.min(1.5 + density * 15, 1.5) and density < tstone then -- obsidian
+					elseif densitybase >= tlava - math.min(0.6 + density * 6, 0.6) and density < tstone then -- obsidian
 						data[vi] = c_obsidian
 						stable[si] = 1
 						under[si] = 0
