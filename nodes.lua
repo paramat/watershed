@@ -67,6 +67,15 @@ minetest.register_node("watershed:redstone", {
 	tiles = {"default_desert_stone.png"},
 	is_ground_content = false,
 	groups = {cracky=3},
+	drop = "watershed:redcobble",
+	sounds = default.node_sound_stone_defaults(),
+})
+
+minetest.register_node("watershed:redcobble", {
+	description = "WS Red Cobblestone",
+	tiles = {"watershed_redcobble.png"},
+	is_ground_content = false,
+	groups = {cracky=3, stone=2},
 	sounds = default.node_sound_stone_defaults(),
 })
 
@@ -75,22 +84,8 @@ minetest.register_node("watershed:stone", {
 	tiles = {"default_stone.png"},
 	is_ground_content = false,
 	groups = {cracky=3},
+	drop = "default:cobble",
 	sounds = default.node_sound_stone_defaults(),
-})
-
-minetest.register_node("watershed:cloud", {
-	description = "WS Cloud",
-	drawtype = "glasslike",
-	tiles = {"watershed_cloud.png"},
-	paramtype = "light",
-	is_ground_content = false,
-	sunlight_propagates = true,
-	walkable = false,
-	pointable = false,
-	diggable = false,
-	buildable_to = true,
-	post_effect_color = {a=64, r=241, g=248, b=255},
-	groups = {not_in_creative_inventory=1},
 })
 
 minetest.register_node("watershed:cactus", {
@@ -146,7 +141,6 @@ minetest.register_node("watershed:vine", {
 	description = "WS Jungletree Vine",
 	drawtype = "airlike",
 	paramtype = "light",
-	sunlight_propagates = true,
 	walkable = false,
 	climbable = true,
 	pointable = false,
@@ -156,20 +150,42 @@ minetest.register_node("watershed:vine", {
 	groups = {not_in_creative_inventory=1},
 })
 
-minetest.register_node("watershed:water", {
-	description = "WS Water Source",
-	inventory_image = minetest.inventorycube("watershed_water.png"),
+minetest.register_node("watershed:freshice", {
+	description = "WS Fresh Ice",
+	tiles = {"watershed_freshice.png"},
+	is_ground_content = false,
+	paramtype = "light",
+	groups = {cracky=3},
+	sounds = default.node_sound_glass_defaults(),
+})
+
+minetest.register_node("watershed:cloud", {
+	description = "WS Cloud",
+	drawtype = "glasslike",
+	tiles = {"watershed_cloud.png"},
+	paramtype = "light",
+	sunlight_propagates = true,
+	walkable = false,
+	pointable = false,
+	diggable = false,
+	buildable_to = true,
+	post_effect_color = {a=23, r=241, g=248, b=255},
+})
+
+minetest.register_node("watershed:freshwater", {
+	description = "WS Fresh Water Source",
+	inventory_image = minetest.inventorycube("watershed_freshwater.png"),
 	drawtype = "liquid",
 	tiles = {
 		{
-			name="watershed_wateranim.png",
+			name="watershed_freshwateranim.png",
 			animation={type="vertical_frames",
 			aspect_w=16, aspect_h=16, length=2.0}
 		}
 	},
 	special_tiles = {
 		{
-			name="watershed_wateranim.png",
+			name="watershed_freshwateranim.png",
 			animation={type="vertical_frames",
 			aspect_w=16, aspect_h=16, length=2.0},
 			backface_culling = false,
@@ -185,8 +201,8 @@ minetest.register_node("watershed:water", {
 	drop = "",
 	drowning = 1,
 	liquidtype = "source",
-	liquid_alternative_flowing = "watershed:waterflow",
-	liquid_alternative_source = "watershed:water",
+	liquid_alternative_flowing = "watershed:freshwaterflow",
+	liquid_alternative_source = "watershed:freshwater",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
 	liquid_range = 2,
@@ -194,19 +210,19 @@ minetest.register_node("watershed:water", {
 	groups = {water=3, liquid=3, puts_out_fire=1},
 })
 
-minetest.register_node("watershed:waterflow", {
-	description = "WS Flowing Water",
-	inventory_image = minetest.inventorycube("watershed_water.png"),
+minetest.register_node("watershed:freshwaterflow", {
+	description = "WS Fresh Flowing Water",
+	inventory_image = minetest.inventorycube("watershed_freshwater.png"),
 	drawtype = "flowingliquid",
-	tiles = {"default_water.png"},
+	tiles = {"watershed_freshwater.png"},
 	special_tiles = {
 		{
-			image="watershed_waterflowanim.png",
+			image="watershed_freshwaterflowanim.png",
 			backface_culling=false,
 			animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=0.8}
 		},
 		{
-			image="watershed_waterflowanim.png",
+			image="watershed_freshwaterflowanim.png",
 			backface_culling=true,
 			animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=0.8}
 		},
@@ -222,8 +238,8 @@ minetest.register_node("watershed:waterflow", {
 	drop = "",
 	drowning = 1,
 	liquidtype = "flowing",
-	liquid_alternative_flowing = "watershed:waterflow",
-	liquid_alternative_source = "watershed:water",
+	liquid_alternative_flowing = "watershed:freshwaterflow",
+	liquid_alternative_source = "watershed:freshwater",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
 	liquid_range = 2,

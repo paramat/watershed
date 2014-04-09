@@ -212,11 +212,11 @@ end
 -- Register buckets, lava fuel
 
 bucket.register_liquid(
-	"watershed:water",
-	"watershed:waterflow",
-	"watershed:bucket_water",
-	"watershed_bucketwater.png",
-	"WS Water Bucket"
+	"watershed:freshwater",
+	"watershed:freshwaterflow",
+	"watershed:bucket_freshwater",
+	"watershed_bucketfreshwater.png",
+	"WS Fresh Water Bucket"
 )
 
 bucket.register_liquid(
@@ -234,11 +234,11 @@ minetest.register_craft({
 	replacements = {{"watershed:bucket_lava", "bucket:bucket_empty"}},
 })
 
--- Singlenode mapgen option
+-- Singlenode option
 
-local SINGLENODE = true
+local SINODE = true
 
-if SINGLENODE then
+if SINODE then
 	-- Set mapgen parameters
 
 	minetest.register_on_mapgen_init(function(mgparams)
@@ -322,21 +322,21 @@ if SINGLENODE then
 			local x1 = x0 + 79
 			local z1 = z0 + 79
 			local y1 = 47
-		
+	
 			local sidelen = 80
 			local chulens = {x=sidelen, y=sidelen, z=sidelen}
 			local minposxyz = {x=x0, y=y0, z=z0}
 			local minposxz = {x=x0, y=z0}
-	
+
 			local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 			local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
 			local nvals_fault = minetest.get_perlin_map(np_fault, chulens):get3dMap_flat(minposxyz)
 			local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
 			local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
-	
+
 			local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 			local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
-		
+	
 			local nixz = 1
 			local nixyz = 1
 			for z = z0, z1 do

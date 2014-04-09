@@ -1,7 +1,13 @@
--- watershed 0.3.5 by paramat
+-- watershed 0.3.6 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
--- License: code WTFPL
+-- License: code WTFPL, textures CC BY-SA
+-- Red cobble texture CC BY-SA by brunob.santos minetestbr.blogspot.com
+
+-- added turquoise fresh ice node
+-- bugfix: stone drops default:cobble
+-- add red cobble, texture by brunob.santos
+-- redo clouds using fissure and humid noises, new texture
 
 -- Parameters
 
@@ -9,8 +15,8 @@ local YMIN = -33000 -- Approximate base of realm stone
 local YMAX = 33000 -- Approximate top of atmosphere / mountains / floatlands
 local TERCEN = -160 -- Terrain 'centre', average seabed level
 local YWAT = 1 -- Sea surface y
-local YCLOUD = 256 -- Cloud level
-local CLOUDS = true
+local YCLOMIN = 287 -- Minimum height of mod clouds
+local CLOUDS = true -- Mod clouds?
 
 local TERSCA = 512 -- Vertical terrain scale
 local XLSAMP = 0.2 -- Extra large scale height variation amplitude
@@ -26,15 +32,13 @@ local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad 
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.001 -- Ore seam thickness tuner
-local ORET = 0.02 -- Ore threshold for seam
-local TCLOUD = 0.5 -- Cloud threshold
+local SEAMT = 0.02 -- Seam threshold
 
 local HITET = 0.35 -- High temperature threshold
 local LOTET = -0.35 -- Low ..
 local ICETET = -0.7 -- Ice ..
 local HIHUT = 0.35 -- High humidity threshold
 local LOHUT = -0.35 -- Low ..
-local CLOHUT = 0.35 -- Cloud humidity threshold
 
 local PINCHA = 36 -- Pine tree 1/x chance per node
 local APTCHA = 36 -- Appletree
@@ -115,9 +119,9 @@ local np_humid = {
 	persist = 0.5
 }
 
--- 3D noise for ore seams
+-- 3D noise for ore seam networks
 
-local np_ore = {
+local np_seam = {
 	offset = 0,
 	scale = 1,
 	spread = {x=512, y=128, z=512},
@@ -126,7 +130,7 @@ local np_ore = {
 	persist = 0.5
 }
 
--- 3D noise for rock strata
+-- 3D noise for rock strata inclination
 
 local np_strata = {
 	offset = 0,
@@ -157,17 +161,6 @@ local np_xlscale = {
 	seed = -72,
 	octaves = 3,
 	persist = 0.4
-}
-
--- 2D noise for clouds
-
-local np_cloud = {
-	offset = 0,
-	scale = 1,
-	spread = {x=207, y=207, z=207},
-	seed = 2113,
-	octaves = 4,
-	persist = 0.7
 }
 
 -- 2D noise for magma surface
@@ -236,16 +229,17 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_grass5 = minetest.get_content_id("default:grass_5")
 	local c_obsidian = minetest.get_content_id("default:obsidian")
 	
-	local c_wswater = minetest.get_content_id("watershed:water")
+	local c_wsfreshwater = minetest.get_content_id("watershed:freshwater")
 	local c_wsstone = minetest.get_content_id("watershed:stone")
 	local c_wsredstone = minetest.get_content_id("watershed:redstone")
 	local c_wsgrass = minetest.get_content_id("watershed:grass")
 	local c_wsdrygrass = minetest.get_content_id("watershed:drygrass")
-	local c_wsgoldgrass = minetest.get_content_id("watershed:goldengrass")
+	local c_wsgoldengrass = minetest.get_content_id("watershed:goldengrass")
 	local c_wsdirt = minetest.get_content_id("watershed:dirt")
-	local c_wscloud = minetest.get_content_id("watershed:cloud")
 	local c_wspermafrost = minetest.get_content_id("watershed:permafrost")
 	local c_wslava = minetest.get_content_id("watershed:lava")
+	local c_wsfreshice = minetest.get_content_id("watershed:freshice")
+	local c_wscloud = minetest.get_content_id("watershed:cloud")
 	-- perlinmap stuff
 	local sidelen = x1 - x0 + 1
 	local chulens = {x=sidelen, y=sidelen+2, z=sidelen}
@@ -258,12 +252,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
 	local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
 	local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
-	local nvals_ore = minetest.get_perlin_map(np_ore, chulens):get3dMap_flat(minposxyz)
+	local nvals_seam = minetest.get_perlin_map(np_seam, chulens):get3dMap_flat(minposxyz)
 	local nvals_strata = minetest.get_perlin_map(np_strata, chulens):get3dMap_flat(minposxyz)
 	
 	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
-	local nvals_cloud = minetest.get_perlin_map(np_cloud, chulens):get2dMap_flat(minposxz)
 	local nvals_magma = minetest.get_perlin_map(np_magma, chulens):get2dMap_flat(minposxz)
 	
 	local ungen = false -- ungenerated chunk below?
@@ -303,11 +296,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local tsand = TSAND * (1 - terblen)
 				local tstone = TSTONE * (1 + grad * 0.5)
 				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16 * 0.5)
-				local nofis = false
-				if density >= 0 then -- if terrain set fissure flag
-					if math.abs(nvals_fissure[nixyz]) > FIST + math.sqrt(density) * FISEXP then
-						nofis = true
-					end
+				
+				local nofis = false -- set fissure bool
+				if math.abs(nvals_fissure[nixyz]) > FIST + math.sqrt(density) * FISEXP then
+					nofis = true
 				end
 				-- overgeneration and in-chunk generation
 				if y == y0 - 1 then -- node layer below chunk
@@ -317,7 +309,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						else
 							stable[si] = 0
 						end
-					else
+					else -- scan top layer of chunk below
 						local nodename = minetest.get_node({x=x,y=y,z=z}).name
 						if nodename == "watershed:stone"
 						or nodename == "watershed:redstone"
@@ -385,7 +377,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							data[vi] = c_sandstone
 						elseif biome == 7 and density < TSTONE * 3 then -- desert stone
 							data[vi] = c_wsredstone
-						elseif math.abs(nvals_ore[nixyz]) < ORET then -- if seam
+						elseif math.abs(nvals_seam[nixyz]) < SEAMT then -- if seam
 							if densityper >= 0.9 and densityper <= 0.9 + ORETHI
 							and math.random(23) == 2 then
 								data[vi] = c_stodiam
@@ -466,22 +458,19 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						under[si] = 0
 					elseif densitybase >= triv and density < tstone then -- river water, not in fissures
 						if n_temp < ICETET then
-							data[vi] = c_ice
+							data[vi] = c_wsfreshice
 						else
-							data[vi] = c_wswater
+							data[vi] = c_wsfreshwater
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif CLOUDS and y == YCLOUD then -- clouds
+					elseif CLOUDS and y == y1 and y >= YCLOMIN then -- clouds at chunk top
 						local xrq = 16 * math.floor((x - x0) / 16) -- quantise to 16x16 lattice
 						local zrq = 16 * math.floor((z - z0) / 16)
-						local qixz = zrq * 80 + xrq + 1 -- quantised index
-						if nvals_cloud[qixz] > TCLOUD then
-							local yrq = 16 * math.floor((y - y0) / 16)
-							local qixyz = zrq * 6400 + yrq * 80 + xrq + 1
-							if nvals_humid[qixyz] > CLOHUT then
-								data[vi] = c_wscloud
-							end
+						local yrq = 79
+						local qixyz = zrq * 6400 + yrq * 80 + xrq + 1 -- quantised 3D index
+						if math.abs(nvals_fissure[qixyz]) < nvals_humid[qixyz] * 0.1 then
+							data[vi] = c_wscloud
 						end
 						stable[si] = 0
 						under[si] = 0
@@ -490,7 +479,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							local fnoise = nvals_fissure[nixyz]
 							if under[si] == 1 then
 								if math.random(121) == 2 then
-									data[viu] = c_dirtsnow
+									data[viu] = c_snowblock
 								elseif math.random(121) == 2 then
 									data[viu] = c_ice
 								else
@@ -513,7 +502,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								data[viu] = c_wsdrygrass
 								if math.random(GRACHA) == 2 then
 									if math.random(5) == 2 then
-										data[vi] = c_wsgoldgrass
+										data[vi] = c_wsgoldengrass
 									else
 										data[vi] = c_dryshrub
 									end
@@ -550,7 +539,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								else
 									data[viu] = c_wsdrygrass
 									if math.random(GOGCHA) == 2 then
-										data[vi] = c_wsgoldgrass
+										data[vi] = c_wsgoldengrass
 									end
 								end
 							elseif under[si] == 9 then
