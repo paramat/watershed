@@ -209,36 +209,11 @@ function watershed_papyrus(x, y, z, area, data)
 	end
 end
 
--- Register buckets, lava fuel
-
-bucket.register_liquid(
-	"watershed:freshwater",
-	"watershed:freshwaterflow",
-	"watershed:bucket_freshwater",
-	"watershed_bucketfreshwater.png",
-	"WS Fresh Water Bucket"
-)
-
-bucket.register_liquid(
-	"watershed:lava",
-	"watershed:lavaflow",
-	"watershed:bucket_lava",
-	"bucket_lava.png",
-	"WS Lava Bucket"
-)
-
-minetest.register_craft({
-	type = "fuel",
-	recipe = "watershed:bucket_lava",
-	burntime = 60,
-	replacements = {{"watershed:bucket_lava", "bucket:bucket_empty"}},
-})
-
 -- Singlenode option
 
-local SINODE = true
+local SINGLENODE = true
 
-if SINODE then
+if SINGLENODE then
 	-- Set mapgen parameters
 
 	minetest.register_on_mapgen_init(function(mgparams)
@@ -394,3 +369,15 @@ if SINODE then
 		return true
 	end)
 end
+
+-- ABM
+
+minetest.register_abm({
+	nodenames = {"watershed:luxoreoff"},
+	interval = 7,
+	chance = 1,
+	action = function(pos, node, active_object_count, active_object_count_wider)
+		minetest.remove_node(pos)
+		minetest.place_node(pos, {name="watershed:luxoreon"})
+	end,
+})

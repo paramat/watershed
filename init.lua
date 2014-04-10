@@ -4,10 +4,12 @@
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos minetestbr.blogspot.com
 
--- added turquoise fresh ice node
--- bugfix: stone drops default:cobble
--- add red cobble, texture by brunob.santos
--- redo clouds using fissure and humid noises, new texture
+-- smelt red cobble to default:desert_stone
+-- add luxore to fissures. luxcrystals craftable to lights
+-- redued strata vertical scale
+-- reduced seam horizontal scale
+-- thicker seams
+-- ores more common within seams
 
 -- Parameters
 
@@ -19,6 +21,7 @@ local YCLOMIN = 287 -- Minimum height of mod clouds
 local CLOUDS = true -- Mod clouds?
 
 local TERSCA = 512 -- Vertical terrain scale
+local STRASCA = 256 -- Vertical strata scale
 local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 local BASAMP = 0.4 -- Base terrain amplitude
 local CANAMP = 0.4 -- Canyon terrain amplitude
@@ -31,8 +34,8 @@ local TSAND = -0.025 -- Maximum densitybase threshold for river sand
 local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
 local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
-local ORETHI = 0.001 -- Ore seam thickness tuner
-local SEAMT = 0.02 -- Seam threshold
+local ORETHI = 0.005 -- Ore seam thickness tuner
+local SEAMT = 0.05 -- Seam threshold
 
 local HITET = 0.35 -- High temperature threshold
 local LOTET = -0.35 -- Low ..
@@ -124,7 +127,7 @@ local np_humid = {
 local np_seam = {
 	offset = 0,
 	scale = 1,
-	spread = {x=512, y=128, z=512},
+	spread = {x=256, y=256, z=256},
 	seed = -992221,
 	octaves = 2,
 	persist = 0.5
@@ -135,7 +138,7 @@ local np_seam = {
 local np_strata = {
 	offset = 0,
 	scale = 1,
-	spread = {x=512, y=128, z=512},
+	spread = {x=512, y=512, z=512},
 	seed = 92219,
 	octaves = 2,
 	persist = 0.5
@@ -240,6 +243,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wslava = minetest.get_content_id("watershed:lava")
 	local c_wsfreshice = minetest.get_content_id("watershed:freshice")
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
+	local c_wsluxoreoff = minetest.get_content_id("watershed:luxoreoff")
 	-- perlinmap stuff
 	local sidelen = x1 - x0 + 1
 	local chulens = {x=sidelen, y=sidelen+2, z=sidelen}
@@ -365,7 +369,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					elseif density >= tstone and nofis  -- stone cut by fissures
 					or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
 					or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
-						local densitystr = nvals_strata[nixyz] / 4 + (TERCEN - y) / TERSCA
+						local densitystr = nvals_strata[nixyz] / 4 + (TERCEN - y) / STRASCA
 						local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
 						if (densityper >= 0 and densityper <= 0.04) -- sandstone strata
 						or (densityper >= 0.2 and densityper <= 0.23)
@@ -379,27 +383,29 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							data[vi] = c_wsredstone
 						elseif math.abs(nvals_seam[nixyz]) < SEAMT then -- if seam
 							if densityper >= 0.9 and densityper <= 0.9 + ORETHI
-							and math.random(23) == 2 then
+							and math.random(11) == 2 then
 								data[vi] = c_stodiam
 							elseif densityper >= 0.8 and densityper <= 0.8 + ORETHI
-							and math.random(17) == 2 then
+							and math.random(5) == 2 then
 								data[vi] = c_stogold
 							elseif densityper >= 0.6 and densityper <= 0.6 + ORETHI * 4 then
 								data[vi] = c_stocoal
 							elseif densityper >= 0.5 and densityper <= 0.5 + ORETHI * 4 then
 								data[vi] = c_gravel
 							elseif densityper >= 0.4 and densityper <= 0.4 + ORETHI * 2
-							and math.random(3) == 2 then
+							and math.random(2) == 2 then
 								data[vi] = c_stoiron
 							elseif densityper >= 0.3 and densityper <= 0.3 + ORETHI * 2
-							and math.random(5) == 2 then
+							and math.random(3) == 2 then
 								data[vi] = c_stocopp
 							elseif densityper >= 0.1 and densityper <= 0.1 + ORETHI
-							and math.random(19) == 2 then
+							and math.random(7) == 2 then
 								data[vi] = c_mese
 							else
 								data[vi] = c_wsstone
 							end
+						elseif math.random(729) == 2 then
+							data[vi] = c_wsluxoreoff
 						else
 							data[vi] = c_wsstone
 						end

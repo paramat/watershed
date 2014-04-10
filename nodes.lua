@@ -172,6 +172,32 @@ minetest.register_node("watershed:cloud", {
 	post_effect_color = {a=23, r=241, g=248, b=255},
 })
 
+minetest.register_node("watershed:luxoreoff", {
+	description = "WS Lux Ore Off",
+	tiles = {"watershed_luxore.png"},
+	light_source = 14,
+	groups = {cracky=3},
+	drop = "watershed:luxcrystal 8",
+	sounds = default.node_sound_glass_defaults(),
+})
+
+minetest.register_node("watershed:luxoreon", {
+	description = "WS Lux Ore On",
+	tiles = {"watershed_luxore.png"},
+	light_source = 14,
+	groups = {cracky=3},
+	drop = "watershed:luxcrystal 8",
+	sounds = default.node_sound_glass_defaults(),
+})
+
+minetest.register_node("watershed:light", {
+	description = "WS Light",
+	tiles = {"watershed_light.png"},
+	light_source = 14,
+	groups = {cracky=3},
+	sounds = default.node_sound_glass_defaults(),
+})
+
 minetest.register_node("watershed:freshwater", {
 	description = "WS Fresh Water Source",
 	inventory_image = minetest.inventorycube("watershed_freshwater.png"),
@@ -320,4 +346,54 @@ minetest.register_node("watershed:lavaflow", {
 	damage_per_second = 8,
 	post_effect_color = {a=192, r=255, g=64, b=0},
 	groups = {lava=3, liquid=2, hot=3, igniter=1, not_in_creative_inventory=1},
+})
+
+-- Items
+
+minetest.register_craftitem("watershed:luxcrystal", {
+	description = "WS Lux Crystal",
+	inventory_image = "watershed_luxcrystal.png",
+})
+
+-- Crafting
+
+minetest.register_craft({
+	type = "cooking",
+	output = "default:desert_stone",
+	recipe = "watershed:redcobble",
+})
+
+minetest.register_craft({
+    output = "watershed:light",
+    recipe = {
+        {"default:glass"},
+        {"watershed:luxcrystal"},
+    },
+})
+
+-- Buckets
+
+bucket.register_liquid(
+	"watershed:freshwater",
+	"watershed:freshwaterflow",
+	"watershed:bucket_freshwater",
+	"watershed_bucketfreshwater.png",
+	"WS Fresh Water Bucket"
+)
+
+bucket.register_liquid(
+	"watershed:lava",
+	"watershed:lavaflow",
+	"watershed:bucket_lava",
+	"bucket_lava.png",
+	"WS Lava Bucket"
+)
+
+-- Fuel
+
+minetest.register_craft({
+	type = "fuel",
+	recipe = "watershed:bucket_lava",
+	burntime = 60,
+	replacements = {{"watershed:bucket_lava", "bucket:bucket_empty"}},
 })
