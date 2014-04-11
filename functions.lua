@@ -101,7 +101,7 @@ function watershed_jungletree(x, y, z, area, data)
 				end
 			end
 			end
-		elseif j <= -1 or j == top - 2 or j == branch then -- branches, roots
+		elseif j == top - 2 or j == branch then -- branches
 			for i = -1, 1 do
 			for k = -1, 1 do
 				if math.abs(i) + math.abs(k) == 2 then
@@ -121,7 +121,7 @@ function watershed_jungletree(x, y, z, area, data)
 			end
 			end
 		end
-		if j >= -1 and j <= top - 3 then -- trunk
+		if j <= top - 3 then -- trunk
 			local vi = area:index(x, y + j, z)
 			data[vi] = c_juntree
 		end

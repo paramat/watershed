@@ -1,15 +1,14 @@
--- watershed 0.3.6 by paramat
+-- watershed 0.3.7 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos minetestbr.blogspot.com
 
--- smelt red cobble to default:desert_stone
--- add luxore to fissures. luxcrystals craftable to lights
--- redued strata vertical scale
--- reduced seam horizontal scale
--- thicker seams
--- ores more common within seams
+-- more coal seams, now 4 per terrain scale
+-- wider seams
+-- luxore seam
+-- remove jungletree roots as they are griefed by mapgen method and make holes underground
+-- use strata noise for modulating cliffs
 
 -- Parameters
 
@@ -21,21 +20,19 @@ local YCLOMIN = 287 -- Minimum height of mod clouds
 local CLOUDS = true -- Mod clouds?
 
 local TERSCA = 512 -- Vertical terrain scale
-local STRASCA = 256 -- Vertical strata scale
 local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 local BASAMP = 0.4 -- Base terrain amplitude
 local CANAMP = 0.4 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
 local ATANAMP = 1.2 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 
-local TSTONE = 0.03 -- Density threshold for stone, depth of soil at TERCEN
+local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.02 -- Maximum densitybase threshold for river water
 local TSAND = -0.025 -- Maximum densitybase threshold for river sand
 local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
-local FIST = 0 -- Fissure threshold at surface, controls size of fissure entrances at surface
 local FISEXP = 0.02 -- Fissure expansion rate under surface
-local ORETHI = 0.005 -- Ore seam thickness tuner
-local SEAMT = 0.05 -- Seam threshold
+local ORETHI = 0.002 -- Ore seam thickness tuner
+local SEAMT = 0.2 -- Seam threshold, width of seams, 0.2 = rare, 2 = continuous layers
 
 local HITET = 0.35 -- High temperature threshold
 local LOTET = -0.35 -- Low ..
@@ -74,7 +71,7 @@ local np_smooth = {
 	scale = 1,
 	spread = {x=512, y=512, z=512},
 	seed = 593,
-	octaves = 6,
+	octaves = 5,
 	persist = 0.3
 }
 
@@ -85,7 +82,7 @@ local np_fault = {
 	scale = 1,
 	spread = {x=512, y=1024, z=512},
 	seed = 14440002,
-	octaves = 6,
+	octaves = 5,
 	persist = 0.5
 }
 
@@ -144,7 +141,7 @@ local np_strata = {
 	persist = 0.5
 }
 
--- 2D noise for base terrain / riverbed height / mountain ranges, terrain blend, river and river sand depth
+-- 2D noise for base terrain / riverbed height, terrain blend, river and river sand depth
 
 local np_base = {
 	offset = 0,
@@ -279,21 +276,20 @@ minetest.register_on_generated(function(minp, maxp, seed)
 			for x = x0, x1 do -- for each node do
 				local si = x - x0 + 1 -- stable, under tables index
 				
-				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP -- get densitybase and density
-				local n_base = nvals_base[nixz]
+				local n_base = nvals_base[nixz] -- get densitybase and density
+				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
 				local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
 				local terblen = math.max(1 - math.abs(n_base), 0)
-				local n_temp = nvals_temp[nixyz]
-				local n_humid = nvals_humid[nixyz]
+				local n_strata = nvals_strata[nixyz]
 				local density
 				if nvals_fault[nixyz] >= 0 then
 					density = densitybase
 					+ math.abs(nvals_rough[nixyz] * terblen
-					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * (1 + n_temp * 0.5)
+					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * math.abs(1 + n_strata)
 				else	
 					density = densitybase
 					+ math.abs(nvals_rough[nixyz] * terblen
-					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * (1 + n_humid * 0.5)
+					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
 				end
 				
 				local triv = TRIV * (1 - terblen) -- other values
@@ -302,7 +298,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16 * 0.5)
 				
 				local nofis = false -- set fissure bool
-				if math.abs(nvals_fissure[nixyz]) > FIST + math.sqrt(density) * FISEXP then
+				if math.abs(nvals_fissure[nixyz]) > math.sqrt(density) * FISEXP then
 					nofis = true
 				end
 				-- overgeneration and in-chunk generation
@@ -330,6 +326,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					end
 				elseif y >= y0 and y <= y1 then -- chunk
 					local biome = false -- select biome for node
+					local n_temp = nvals_temp[nixyz]
+					local n_humid = nvals_humid[nixyz]
 					if n_temp < LOTET then
 						if n_humid < LOHUT then
 							biome = 1 -- tundra
@@ -367,45 +365,51 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						stable[si] = 1
 						under[si] = 0
 					elseif density >= tstone and nofis  -- stone cut by fissures
-					or (density >= tstone and density < TSTONE * 3 and y <= YWAT) -- stone around water
-					or (density >= tstone and density < TSTONE * 3 and densitybase >= triv ) then -- stone around river
-						local densitystr = nvals_strata[nixyz] / 4 + (TERCEN - y) / STRASCA
+					or (density >= tstone and density < TSTONE * 2 and y <= YWAT) -- stone around water
+					or (density >= tstone and density < TSTONE * 2 and densitybase >= triv ) then -- stone around river
+						local densitystr = n_strata * 0.25 + (TERCEN - y) / TERSCA
 						local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
-						if (densityper >= 0 and densityper <= 0.04) -- sandstone strata
-						or (densityper >= 0.2 and densityper <= 0.23)
+						if (densityper >= 0.05 and densityper <= 0.09) -- sandstone strata
+						or (densityper >= 0.25 and densityper <= 0.28)
 						or (densityper >= 0.45 and densityper <= 0.47)
-						or (densityper >= 0.7 and densityper <= 0.73)
-						or (densityper >= 0.75 and densityper <= 0.77)
+						or (densityper >= 0.74 and densityper <= 0.76)
+						or (densityper >= 0.77 and densityper <= 0.79)
 						or (densityper >= 0.84 and densityper <= 0.87)
-						or (densityper >= 0.92 and densityper <= 0.95) then
+						or (densityper >= 0.95 and densityper <= 0.98) then
 							data[vi] = c_sandstone
-						elseif biome == 7 and density < TSTONE * 3 then -- desert stone
+						elseif biome == 7 and density < TSTONE * 2 then -- desert stone as surface layer
 							data[vi] = c_wsredstone
 						elseif math.abs(nvals_seam[nixyz]) < SEAMT then -- if seam
-							if densityper >= 0.9 and densityper <= 0.9 + ORETHI
-							and math.random(11) == 2 then
-								data[vi] = c_stodiam
-							elseif densityper >= 0.8 and densityper <= 0.8 + ORETHI
-							and math.random(5) == 2 then
-								data[vi] = c_stogold
-							elseif densityper >= 0.6 and densityper <= 0.6 + ORETHI * 4 then
+							if densityper >= 0 and densityper <= ORETHI * 4 then
+								data[vi] = c_stocoal
+							elseif densityper >= 0.3 and densityper <= 0.3 + ORETHI * 4 then
 								data[vi] = c_stocoal
 							elseif densityper >= 0.5 and densityper <= 0.5 + ORETHI * 4 then
+								data[vi] = c_stocoal
+							elseif densityper >= 0.8 and densityper <= 0.8 + ORETHI * 4 then
+								data[vi] = c_stocoal
+							elseif densityper >= 0.55 and densityper <= 0.55 + ORETHI * 2 then
 								data[vi] = c_gravel
-							elseif densityper >= 0.4 and densityper <= 0.4 + ORETHI * 2
+							elseif densityper >= 0.1 and densityper <= 0.1 + ORETHI * 2 then
+								data[vi] = c_wsluxoreoff
+							elseif densityper >= 0.2 and densityper <= 0.2 + ORETHI * 2
 							and math.random(2) == 2 then
 								data[vi] = c_stoiron
-							elseif densityper >= 0.3 and densityper <= 0.3 + ORETHI * 2
+							elseif densityper >= 0.4 and densityper <= 0.4 + ORETHI * 2
 							and math.random(3) == 2 then
 								data[vi] = c_stocopp
-							elseif densityper >= 0.1 and densityper <= 0.1 + ORETHI
+							elseif densityper >= 0.6 and densityper <= 0.6 + ORETHI
+							and math.random(5) == 2 then
+								data[vi] = c_stogold
+							elseif densityper >= 0.7 and densityper <= 0.7 + ORETHI
 							and math.random(7) == 2 then
 								data[vi] = c_mese
+							elseif densityper >= 0.9 and densityper <= 0.9 + ORETHI
+							and math.random(11) == 2 then
+								data[vi] = c_stodiam
 							else
 								data[vi] = c_wsstone
 							end
-						elseif math.random(729) == 2 then
-							data[vi] = c_wsluxoreoff
 						else
 							data[vi] = c_wsstone
 						end
@@ -600,8 +604,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	end
 	-- voxelmanip stuff
 	vm:set_data(data)
-	vm:set_lighting({day=0, night=0})
-	vm:calc_lighting()
+	vm:set_lighting({day=14, night=14})
+	--vm:calc_lighting()
 	vm:write_to_map(data)
 	
 	local chugent = math.ceil((os.clock() - t1) * 1000) -- chunk generation time
