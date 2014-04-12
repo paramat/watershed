@@ -4,11 +4,8 @@
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos minetestbr.blogspot.com
 
--- more coal seams, now 4 per terrain scale
--- wider seams
--- luxore seam
--- remove jungletree roots as they are griefed by mapgen method and make holes underground
--- use strata noise for modulating cliffs
+-- removed terrain modulation and cliffs for speed
+-- fresh ice in tundra
 
 -- Parameters
 
@@ -32,7 +29,7 @@ local TSAND = -0.025 -- Maximum densitybase threshold for river sand
 local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.002 -- Ore seam thickness tuner
-local SEAMT = 0.2 -- Seam threshold, width of seams, 0.2 = rare, 2 = continuous layers
+local SEAMT = 0.2 -- Seam threshold, width of seams
 
 local HITET = 0.35 -- High temperature threshold
 local LOTET = -0.35 -- Low ..
@@ -72,18 +69,7 @@ local np_smooth = {
 	spread = {x=512, y=512, z=512},
 	seed = 593,
 	octaves = 5,
-	persist = 0.3
-}
-
--- 3D noise for faults
-
-local np_fault = {
-	offset = 0,
-	scale = 1,
-	spread = {x=512, y=1024, z=512},
-	seed = 14440002,
-	octaves = 5,
-	persist = 0.5
+	persist = 0.4
 }
 
 -- 3D noise for fissures
@@ -249,7 +235,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
-	local nvals_fault = minetest.get_perlin_map(np_fault, chulens):get3dMap_flat(minposxyz)
 	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
 	local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
 	local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
@@ -267,7 +252,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	-- mapgen loop
 	local nixyz = 1
 	local nixz = 1
-	local stable = {} -- stability table of true/false. is node stable and supported from below by stone or nodes on stone?
+	local stable = {} -- stability table of true/false. is node supported from below by 2 stone or nodes on 2 stone?
 	local under = {} -- biome table. biome number of previous fine material placed in column
 	for z = z0, z1 do -- for each xy plane progressing northwards
 		for y = y0 - 1, y1 + 1 do -- for each x row progressing upwards
@@ -276,29 +261,31 @@ minetest.register_on_generated(function(minp, maxp, seed)
 			for x = x0, x1 do -- for each node do
 				local si = x - x0 + 1 -- stable, under tables index
 				
-				local n_base = nvals_base[nixz] -- get densitybase and density
-				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
-				local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
-				local terblen = math.max(1 - math.abs(n_base), 0)
+				local n_rough = nvals_rough[nixyz] -- noise values for node
+				local n_smooth = nvals_smooth[nixyz]
+				local n_fissure = nvals_fissure[nixyz]
+				local n_temp = nvals_temp[nixyz]
+				local n_humid = nvals_humid[nixyz]
+				local n_seam = nvals_seam[nixyz]
 				local n_strata = nvals_strata[nixyz]
-				local density
-				if nvals_fault[nixyz] >= 0 then
-					density = densitybase
-					+ math.abs(nvals_rough[nixyz] * terblen
-					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * math.abs(1 + n_strata)
-				else	
-					density = densitybase
-					+ math.abs(nvals_rough[nixyz] * terblen
-					+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
-				end
+				
+				local n_base = nvals_base[nixz]
+				local n_xlscale = nvals_xlscale[nixz]
+				local n_magma = nvals_magma[nixz]
+				
+				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP -- get densitybase and density
+				local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad
+				local terblen = math.max(1 - math.abs(n_base), 0)
+				local density = densitybase
+				+ math.abs(n_rough * terblen + n_smooth * (1 - terblen)) ^ CANEXP * CANAMP
 				
 				local triv = TRIV * (1 - terblen) -- other values
 				local tsand = TSAND * (1 - terblen)
 				local tstone = TSTONE * (1 + grad * 0.5)
-				local tlava = TLAVA * (1 - nvals_magma[nixz] ^ 4 * terblen ^ 16 * 0.5)
+				local tlava = TLAVA * (1 - n_magma ^ 4 * terblen ^ 16 * 0.5)
 				
 				local nofis = false -- set fissure bool
-				if math.abs(nvals_fissure[nixyz]) > math.sqrt(density) * FISEXP then
+				if math.abs(n_fissure) > math.sqrt(density) * FISEXP then
 					nofis = true
 				end
 				-- overgeneration and in-chunk generation
@@ -326,8 +313,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					end
 				elseif y >= y0 and y <= y1 then -- chunk
 					local biome = false -- select biome for node
-					local n_temp = nvals_temp[nixyz]
-					local n_humid = nvals_humid[nixyz]
 					if n_temp < LOTET then
 						if n_humid < LOHUT then
 							biome = 1 -- tundra
@@ -379,7 +364,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							data[vi] = c_sandstone
 						elseif biome == 7 and density < TSTONE * 2 then -- desert stone as surface layer
 							data[vi] = c_wsredstone
-						elseif math.abs(nvals_seam[nixyz]) < SEAMT then -- if seam
+						elseif math.abs(n_seam) < SEAMT then -- if seam
 							if densityper >= 0 and densityper <= ORETHI * 4 then
 								data[vi] = c_stocoal
 							elseif densityper >= 0.3 and densityper <= 0.3 + ORETHI * 4 then
@@ -491,7 +476,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								if math.random(121) == 2 then
 									data[viu] = c_snowblock
 								elseif math.random(121) == 2 then
-									data[viu] = c_ice
+									data[viu] = c_wsfreshice
 								else
 									data[viu] = c_wsdrygrass
 									if math.random(DRYCHA) == 2 then
