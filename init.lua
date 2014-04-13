@@ -4,8 +4,9 @@
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos minetestbr.blogspot.com
 
--- removed terrain modulation and cliffs for speed
--- fresh ice in tundra
+-- thicker layer of redstone in deserts
+-- ice thicker with lower temperature
+-- papyrus on riverbank not beach
 
 -- Parameters
 
@@ -30,6 +31,7 @@ local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad 
 local FISEXP = 0.02 -- Fissure expansion rate under surface
 local ORETHI = 0.002 -- Ore seam thickness tuner
 local SEAMT = 0.2 -- Seam threshold, width of seams
+local ICETHI = 32 -- Controls maximum ice thickness
 
 local HITET = 0.35 -- High temperature threshold
 local LOTET = -0.35 -- Low ..
@@ -46,7 +48,7 @@ local JUTCHA = 16 -- Jungletree
 local JUGCHA = 9 -- Junglegrass
 local CACCHA = 841 -- Cactus
 local DRYCHA = 169 -- Dry shrub
-local PAPCHA = 3 -- Papyrus
+local PAPCHA = 2 -- Papyrus
 local ACACHA = 529 -- Acacia tree
 local GOGCHA = 3 -- Golden grass
 
@@ -338,7 +340,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							biome = 5 -- grassland
 						end
 					end
-				
+					-- add nodes and flora
 					if densitybase >= tlava then -- lava
 						if densitybase >= 0 then
 							data[vi] = c_wslava
@@ -362,7 +364,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						or (densityper >= 0.84 and densityper <= 0.87)
 						or (densityper >= 0.95 and densityper <= 0.98) then
 							data[vi] = c_sandstone
-						elseif biome == 7 and density < TSTONE * 2 then -- desert stone as surface layer
+						elseif biome == 7 and density < TSTONE * 4 then -- desert stone as surface layer
 							data[vi] = c_wsredstone
 						elseif math.abs(n_seam) < SEAMT then -- if seam
 							if densityper >= 0 and densityper <= ORETHI * 4 then
@@ -403,9 +405,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
 						if y == YWAT - 2 and math.abs(n_temp) < 0.05 then -- clay
 							data[vi] = c_clay
-						elseif densitybase >= tsand + math.random() * 0.003 -- river / seabed sand not cut by fissures
-						or y <= YWAT + 1 + math.random(2) then
+						elseif y <= YWAT + 1 + math.random(2) then -- seabed/beach sand not cut by fissures
 							data[vi] = c_sand
+							under[si] = 10 -- beach/dunes
+						elseif densitybase >= tsand + math.random() * 0.003 then -- river sand not cut by fissures
+							data[vi] = c_sand
+							under[si] = 11 -- riverbank
 						elseif nofis then -- fine materials cut by fissures
 							if biome == 1 then
 								data[vi] = c_wspermafrost
@@ -440,14 +445,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							under[si] = 0
 						end
 					elseif y <= YWAT and density < tstone then -- sea water, not in fissures
-						if y == YWAT and n_temp < ICETET then
+						if n_temp < ICETET and y >= YWAT - (ICETET - n_temp) * ICETHI then
 							data[vi] = c_ice
 						else
 							data[vi] = c_water
-							if y == YWAT and biome >= 7 and stable[si] >= 1
-							and math.random(PAPCHA) == 2 then -- papyrus in desert and rainforest
-								watershed_papyrus(x, y, z, area, data)
-							end
 						end
 						stable[si] = 0
 						under[si] = 0
@@ -545,6 +546,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 									if math.random(JUGCHA) == 2 then
 										data[vi] = c_jungrass
 									end
+								end
+							elseif under[si] == 11 and n_temp > HITET then
+								if math.random(PAPCHA) == 2 then
+									watershed_papyrus(x, y, z, area, data)
 								end
 							end
 						end

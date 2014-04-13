@@ -203,7 +203,7 @@ end
 function watershed_papyrus(x, y, z, area, data)
 	local c_papyrus = minetest.get_content_id("default:papyrus")
 	local ph = math.random(1, 4)
-	for j = 1, ph do
+	for j = 0, ph do
 		local vip = area:index(x, y + j, z)
 		data[vip] = c_papyrus
 	end
