@@ -1,12 +1,16 @@
--- watershed 0.3.7 by paramat
+-- watershed 0.3.8 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos minetestbr.blogspot.com
 
--- thicker layer of redstone in deserts
--- ice thicker with lower temperature
--- papyrus on riverbank not beach
+-- pine, acacia tree trunks
+-- bugfix spawning function
+-- temperature / humidity randomness for biome blend
+-- TODO
+-- pine wood
+-- acacia wood
+-- better appletree design with branches
 
 -- Parameters
 
@@ -28,7 +32,7 @@ local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.02 -- Maximum densitybase threshold for river water
 local TSAND = -0.025 -- Maximum densitybase threshold for river sand
 local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
-local FISEXP = 0.02 -- Fissure expansion rate under surface
+local FISEXP = 0.03 -- Fissure expansion rate under surface
 local ORETHI = 0.002 -- Ore seam thickness tuner
 local SEAMT = 0.2 -- Seam threshold, width of seams
 local ICETHI = 32 -- Controls maximum ice thickness
@@ -38,19 +42,20 @@ local LOTET = -0.35 -- Low ..
 local ICETET = -0.7 -- Ice ..
 local HIHUT = 0.35 -- High humidity threshold
 local LOHUT = -0.35 -- Low ..
+local BLEND = 0.03 -- Biome blend randomness
 
 local PINCHA = 36 -- Pine tree 1/x chance per node
 local APTCHA = 36 -- Appletree
 local FLOCHA = 36 -- Flower
 local FOGCHA = 9 -- Forest grass
-local GRACHA = 3 -- Grassland grasses
+local GRACHA = 4 -- Grassland grasses
 local JUTCHA = 16 -- Jungletree
 local JUGCHA = 9 -- Junglegrass
 local CACCHA = 841 -- Cactus
 local DRYCHA = 169 -- Dry shrub
 local PAPCHA = 2 -- Papyrus
 local ACACHA = 529 -- Acacia tree
-local GOGCHA = 3 -- Golden grass
+local GOGCHA = 4 -- Golden grass
 
 -- 3D noise for rough terrain
 
@@ -70,7 +75,7 @@ local np_smooth = {
 	scale = 1,
 	spread = {x=512, y=512, z=512},
 	seed = 593,
-	octaves = 5,
+	octaves = 6,
 	persist = 0.4
 }
 
@@ -266,20 +271,20 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local n_rough = nvals_rough[nixyz] -- noise values for node
 				local n_smooth = nvals_smooth[nixyz]
 				local n_fissure = nvals_fissure[nixyz]
-				local n_temp = nvals_temp[nixyz]
-				local n_humid = nvals_humid[nixyz]
+				local n_temp = nvals_temp[nixyz] + (math.random() - 0.5) * BLEND
+				local n_humid = nvals_humid[nixyz] + (math.random() - 0.5) * BLEND
 				local n_seam = nvals_seam[nixyz]
 				local n_strata = nvals_strata[nixyz]
 				
 				local n_base = nvals_base[nixz]
 				local n_xlscale = nvals_xlscale[nixz]
 				local n_magma = nvals_magma[nixz]
-				
-				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP -- get densitybase and density
-				local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad
-				local terblen = math.max(1 - math.abs(n_base), 0)
+				-- get densitybase and density
+				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP -- vertical density gradient
+				local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad -- base terrain or ridge networks
+				local terblen = math.max(1 - math.abs(n_base), 0) -- terrain blend rough and smooth
 				local density = densitybase
-				+ math.abs(n_rough * terblen + n_smooth * (1 - terblen)) ^ CANEXP * CANAMP
+				+ math.abs(n_rough * terblen + n_smooth * (1 - terblen)) ^ CANEXP * CANAMP -- add canyon terrain
 				
 				local triv = TRIV * (1 - terblen) -- other values
 				local tsand = TSAND * (1 - terblen)

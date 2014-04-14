@@ -30,7 +30,7 @@ function watershed_appletree(x, y, z, area, data)
 end
 
 function watershed_pinetree(x, y, z, area, data)
-	local c_tree = minetest.get_content_id("default:tree")
+	local c_wspitree = minetest.get_content_id("watershed:pinetree")
 	local c_wsneedles = minetest.get_content_id("watershed:needles")
 	local c_snowblock = minetest.get_content_id("default:snowblock")
 	for j = -4, 14 do
@@ -75,7 +75,7 @@ function watershed_pinetree(x, y, z, area, data)
 			end
 		end
 		local vit = area:index(x, y + j, z)
-		data[vit] = c_tree
+		data[vit] = c_wspitree
 	end
 	local vil = area:index(x, y + 15, z)
 	local vila = area:index(x, y + 16, z)
@@ -129,8 +129,8 @@ function watershed_jungletree(x, y, z, area, data)
 end
 
 function watershed_acaciatree(x, y, z, area, data)
-	local c_tree = minetest.get_content_id("default:tree")
-	local c_wsaccleaf = minetest.get_content_id("watershed:acacialeaf")
+	local c_wsactree = minetest.get_content_id("watershed:acaciatree")
+	local c_wsacleaf = minetest.get_content_id("watershed:acacialeaf")
 	for j = -3, 6 do
 		if j == 6 then
 			for i = -4, 4 do
@@ -138,7 +138,7 @@ function watershed_acaciatree(x, y, z, area, data)
 				if not (i == 0 or k == 0) then
 					if math.random(7) ~= 2 then
 						local vil = area:index(x + i, y + j, z + k)
-						data[vil] = c_wsaccleaf
+						data[vil] = c_wsacleaf
 					end
 				end
 			end
@@ -147,7 +147,7 @@ function watershed_acaciatree(x, y, z, area, data)
 			for i = -2, 2, 4 do
 			for k = -2, 2, 4 do
 				local vit = area:index(x + i, y + j, z + k)
-				data[vit] = c_tree
+				data[vit] = c_wsactree
 			end
 			end
 		elseif j == 4 then
@@ -155,13 +155,13 @@ function watershed_acaciatree(x, y, z, area, data)
 			for k = -1, 1 do
 				if math.abs(i) + math.abs(k) == 2 then
 					local vit = area:index(x + i, y + j, z + k)
-					data[vit] = c_tree
+					data[vit] = c_wsactree
 				end
 			end
 			end
 		else
 			local vit = area:index(x, y + j, z)
-			data[vit] = c_tree
+			data[vit] = c_wsactree
 		end
 	end
 end
@@ -247,15 +247,7 @@ if SINGLENODE then
 			spread = {x=512, y=512, z=512},
 			seed = 593,
 			octaves = 6,
-			persist = 0.3
-		}
-		local np_fault = {
-			offset = 0,
-			scale = 1,
-			spread = {x=512, y=1024, z=512},
-			seed = 14440002,
-			octaves = 6,
-			persist = 0.5
+			persist = 0.4
 		}
 		local np_base = {
 			offset = 0,
@@ -273,23 +265,7 @@ if SINGLENODE then
 			octaves = 3,
 			persist = 0.4
 		}
-		local np_temp = {
-			offset = 0,
-			scale = 1,
-			spread = {x=512, y=512, z=512},
-			seed = 9130,
-			octaves = 2,
-			persist = 0.5
-		}
-		local np_humid = {
-			offset = 0,
-			scale = 1,
-			spread = {x=512, y=512, z=512},
-			seed = -55500,
-			octaves = 2,
-			persist = 0.5
-		}
-		for chunk = 1, 32 do
+		for chunk = 1, 64 do
 			print ("[watershed] searching for spawn "..chunk)
 			local x0 = 80 * math.random(-24, 24) - 32
 			local z0 = 80 * math.random(-24, 24) - 32
@@ -305,9 +281,6 @@ if SINGLENODE then
 
 			local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 			local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
-			local nvals_fault = minetest.get_perlin_map(np_fault, chulens):get3dMap_flat(minposxyz)
-			local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
-			local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
 
 			local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 			local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
@@ -317,22 +290,12 @@ if SINGLENODE then
 			for z = z0, z1 do
 				for y = y0, y1 do
 					for x = x0, x1 do
-						local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
 						local n_base = nvals_base[nixz]
+						local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
 						local densitybase = (1 - math.abs(n_base)) * BASAMP + nvals_xlscale[nixz] * XLSAMP + grad
 						local terblen = math.max(1 - math.abs(n_base), 0)
-						local n_temp = nvals_temp[nixyz]
-						local n_humid = nvals_humid[nixyz]
-						local density
-						if nvals_fault[nixyz] >= 0 then
-							density = densitybase
-							+ math.abs(nvals_rough[nixyz] * terblen
-							+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * (1 + n_temp * 0.5)
-						else	
-							density = densitybase
-							+ math.abs(nvals_rough[nixyz] * terblen
-							+ nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP * (1 + n_humid * 0.5)
-						end
+						local density = densitybase
+						+ math.abs(nvals_rough[nixyz] * terblen + nvals_smooth[nixyz] * (1 - terblen)) ^ CANEXP * CANAMP
 						if y >= 1 and density > -0.01 and density < 0 then
 							ysp = y + 1
 							xsp = x
@@ -372,9 +335,11 @@ end
 
 -- ABM
 
+-- update luxore light
+
 minetest.register_abm({
 	nodenames = {"watershed:luxoreoff"},
-	interval = 7,
+	interval = 13,
 	chance = 1,
 	action = function(pos, node, active_object_count, active_object_count_wider)
 		minetest.remove_node(pos)
