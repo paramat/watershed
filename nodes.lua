@@ -216,6 +216,20 @@ minetest.register_node("watershed:light", {
 	sounds = default.node_sound_glass_defaults(),
 })
 
+minetest.register_node("watershed:acaciawood", {
+	description = "WS Acacia Wood Planks",
+	tiles = {"watershed_acaciawood.png"},
+	groups = {choppy=2,oddly_breakable_by_hand=2,flammable=3,wood=1},
+	sounds = default.node_sound_wood_defaults(),
+})
+
+minetest.register_node("watershed:pinewood", {
+	description = "WS Pine Wood Planks",
+	tiles = {"watershed_pinewood.png"},
+	groups = {choppy=2,oddly_breakable_by_hand=2,flammable=3,wood=1},
+	sounds = default.node_sound_wood_defaults(),
+})
+
 minetest.register_node("watershed:freshwater", {
 	description = "WS Fresh Water Source",
 	inventory_image = minetest.inventorycube("watershed_freshwater.png"),
@@ -387,6 +401,20 @@ minetest.register_craft({
         {"default:glass"},
         {"watershed:luxcrystal"},
     },
+})
+
+minetest.register_craft({
+	output = "watershed:acaciawood 4",
+	recipe = {
+		{"watershed:acaciatree"},
+	}
+})
+
+minetest.register_craft({
+	output = "watershed:pinewood 4",
+	recipe = {
+		{"watershed:pinetree"},
+	}
 })
 
 -- Buckets

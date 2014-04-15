@@ -1,16 +1,13 @@
--- watershed 0.3.8 by paramat
+-- watershed 0.3.9 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos minetestbr.blogspot.com
 
--- pine, acacia tree trunks
--- bugfix spawning function
--- temperature / humidity randomness for biome blend
--- TODO
--- pine wood
--- acacia wood
--- better appletree design with branches
+-- acacia, pine wood
+-- vary sandline, dunes with golden grass
+-- lavacooling
+-- new appletree design
 
 -- Parameters
 
@@ -18,7 +15,9 @@ local YMIN = -33000 -- Approximate base of realm stone
 local YMAX = 33000 -- Approximate top of atmosphere / mountains / floatlands
 local TERCEN = -160 -- Terrain 'centre', average seabed level
 local YWAT = 1 -- Sea surface y
-local YCLOMIN = 287 -- Minimum height of mod clouds
+local YSAV = 5 -- Average sandline y, dune grasses above this
+local SAMP = 3 -- Sandline amplitude
+local YCLOMIN = 207 -- Minimum height of mod clouds
 local CLOUDS = true -- Mod clouds?
 
 local TERSCA = 512 -- Vertical terrain scale
@@ -56,6 +55,7 @@ local DRYCHA = 169 -- Dry shrub
 local PAPCHA = 2 -- Papyrus
 local ACACHA = 529 -- Acacia tree
 local GOGCHA = 4 -- Golden grass
+local DUGCHA = 4 -- Dune grass
 
 -- 3D noise for rough terrain
 
@@ -290,6 +290,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local tsand = TSAND * (1 - terblen)
 				local tstone = TSTONE * (1 + grad * 0.5)
 				local tlava = TLAVA * (1 - n_magma ^ 4 * terblen ^ 16 * 0.5)
+				local ysand = YSAV + n_fissure * SAMP + math.random() * 2
 				
 				local nofis = false -- set fissure bool
 				if math.abs(n_fissure) > math.sqrt(density) * FISEXP then
@@ -410,7 +411,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
 						if y == YWAT - 2 and math.abs(n_temp) < 0.05 then -- clay
 							data[vi] = c_clay
-						elseif y <= YWAT + 1 + math.random(2) then -- seabed/beach sand not cut by fissures
+						elseif y <= ysand then -- seabed/beach/dune sand not cut by fissures
 							data[vi] = c_sand
 							under[si] = 10 -- beach/dunes
 						elseif densitybase >= tsand + math.random() * 0.003 then -- river sand not cut by fissures
@@ -465,7 +466,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif CLOUDS and y == y1 and y >= YCLOMIN then -- clouds at chunk top
+					elseif CLOUDS and y == y1 and y >= YCLOMIN then -- clouds
 						local xrq = 16 * math.floor((x - x0) / 16) -- quantise to 16x16 lattice
 						local zrq = 16 * math.floor((z - z0) / 16)
 						local yrq = 79
@@ -477,7 +478,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						under[si] = 0
 					else -- possible above surface air node
 						if y >= YWAT and under[si] ~= 0 then
-							local fnoise = nvals_fissure[nixyz]
+							local fnoise = n_fissure -- noise for flower colours
 							if under[si] == 1 then
 								if math.random(121) == 2 then
 									data[viu] = c_snowblock
@@ -551,6 +552,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 									if math.random(JUGCHA) == 2 then
 										data[vi] = c_jungrass
 									end
+								end
+							elseif under[si] == 10 then
+								if math.random(DUGCHA) == 2 and y > YSAV 
+								and biome >= 4 then
+									data[vi] = c_wsgoldengrass
 								end
 							elseif under[si] == 11 and n_temp > HITET then
 								if math.random(PAPCHA) == 2 then

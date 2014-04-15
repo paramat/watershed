@@ -3,29 +3,30 @@ function watershed_appletree(x, y, z, area, data)
 	local c_apple = minetest.get_content_id("default:apple")
 	local c_wsappleaf = minetest.get_content_id("watershed:appleleaf")
 	for j = -2, 4 do
-		if j == 2 or j == 3 then
+		if j == 3 or j == 4 then
 			for i = -2, 2 do
 			for k = -2, 2 do
-				local vil = area:index(x + i, y + j + 1, z + k)
-				if math.random(48) == 2 then
+				local vil = area:index(x + i, y + j, z + k)
+				if math.random(64) == 2 then
 					data[vil] = c_apple
 				elseif math.random(5) ~= 2 then
 					data[vil] = c_wsappleaf
 				end
 			end
 			end
-		elseif j == 1 or j == 4 then
+		elseif j == 2 then
 			for i = -1, 1 do
 			for k = -1, 1 do
-				if math.random(5) ~= 2 then
-					local vil = area:index(x + i, y + j + 1, z + k)
-					data[vil] = c_wsappleaf
+				if math.abs(i) + math.abs(k) == 2 then
+					local vit = area:index(x + i, y + j, z + k)
+					data[vit] = c_tree
 				end
 			end
 			end
+		else
+			local vit = area:index(x, y + j, z)
+			data[vit] = c_tree
 		end
-		local vit = area:index(x, y + j, z)
-		data[vit] = c_tree
 	end
 end
 
@@ -344,5 +345,18 @@ minetest.register_abm({
 	action = function(pos, node, active_object_count, active_object_count_wider)
 		minetest.remove_node(pos)
 		minetest.place_node(pos, {name="watershed:luxoreon"})
+	end,
+})
+
+-- Lava water cooling
+
+minetest.register_abm({
+	nodenames = {"group:lava"},
+	neighbors = {"group:water"},
+	interval = 11,
+	chance = 64,
+	action = function(pos, node, active_object_count, active_object_count_wider)
+		minetest.add_node(pos, {name="default:obsidian"})
+		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
 	end,
 })
