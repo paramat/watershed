@@ -1,13 +1,13 @@
--- watershed 0.3.9 by paramat
+-- watershed 0.3.10 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
--- Red cobble texture CC BY-SA by brunob.santos minetestbr.blogspot.com
+-- Red cobble texture CC BY-SA by brunob.santos
 
--- acacia, pine wood
--- vary sandline, dunes with golden grass
--- lavacooling
--- new appletree design
+-- remove randomness from n_temp n_humid
+-- bugfix: initialise under table
+-- TODO
+-- all 2 octaves to 3 octaves for better shapes
 
 -- Parameters
 
@@ -34,11 +34,11 @@ local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad 
 local FISEXP = 0.03 -- Fissure expansion rate under surface
 local ORETHI = 0.002 -- Ore seam thickness tuner
 local SEAMT = 0.2 -- Seam threshold, width of seams
-local ICETHI = 32 -- Controls maximum ice thickness
+local BERGDEP = 32 -- Maximum iceberg depth
 
 local HITET = 0.35 -- High temperature threshold
 local LOTET = -0.35 -- Low ..
-local ICETET = -0.7 -- Ice ..
+local ICETET = -0.35 -- Ice ..
 local HIHUT = 0.35 -- High humidity threshold
 local LOHUT = -0.35 -- Low ..
 local BLEND = 0.03 -- Biome blend randomness
@@ -271,8 +271,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local n_rough = nvals_rough[nixyz] -- noise values for node
 				local n_smooth = nvals_smooth[nixyz]
 				local n_fissure = nvals_fissure[nixyz]
-				local n_temp = nvals_temp[nixyz] + (math.random() - 0.5) * BLEND
-				local n_humid = nvals_humid[nixyz] + (math.random() - 0.5) * BLEND
+				local n_temp = nvals_temp[nixyz]
+				local n_humid = nvals_humid[nixyz]
 				local n_seam = nvals_seam[nixyz]
 				local n_strata = nvals_strata[nixyz]
 				
@@ -288,18 +288,48 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				
 				local triv = TRIV * (1 - terblen) -- other values
 				local tsand = TSAND * (1 - terblen)
-				local tstone = TSTONE * (1 + grad * 0.5)
+				local tstone = math.max(TSTONE * (1 + grad * 0.5), 0)
 				local tlava = TLAVA * (1 - n_magma ^ 4 * terblen ^ 16 * 0.5)
 				local ysand = YSAV + n_fissure * SAMP + math.random() * 2
+				local bergdep = math.abs(n_magma) * BERGDEP
 				
 				local nofis = false -- set fissure bool
 				if math.abs(n_fissure) > math.sqrt(density) * FISEXP then
 					nofis = true
 				end
+				
+				local biome = false -- select biome for node
+				if n_temp < LOTET + (math.random() - 0.5) * BLEND then
+					if n_humid < LOHUT + (math.random() - 0.5) * BLEND then
+						biome = 1 -- tundra
+					elseif n_humid > HIHUT + (math.random() - 0.5) * BLEND then
+						biome = 3 -- taiga
+					else
+						biome = 2 -- snowy plains
+					end
+				elseif n_temp > HITET + (math.random() - 0.5) * BLEND then
+					if n_humid < LOHUT + (math.random() - 0.5) * BLEND then
+						biome = 7 -- desert
+					elseif n_humid > HIHUT + (math.random() - 0.5) * BLEND then
+						biome = 9 -- rainforest
+					else
+						biome = 8 -- savanna
+					end
+				else
+					if n_humid < LOHUT then
+						biome = 4 -- dry grassland
+					elseif n_humid > HIHUT then
+						biome = 6 -- deciduous forest
+					else
+						biome = 5 -- grassland
+					end
+				end
+				
 				-- overgeneration and in-chunk generation
 				if y == y0 - 1 then -- node layer below chunk
+					-- set stable table
 					if ungen then
-						if density >= 0 then -- if node solid
+						if nofis and density >= 0 then -- if node solid
 							stable[si] = 2
 						else
 							stable[si] = 0
@@ -310,42 +340,49 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						or nodename == "watershed:redstone"
 						or nodename == "watershed:dirt"
 						or nodename == "watershed:permafrost"
-						or nodename == "default:sandstone"
+						or nodename == "watershed:luxoreoff"
 						or nodename == "default:sand"
 						or nodename == "default:desert_sand"
-						or nodename == "default:gravel" then
+						or nodename == "default:mese"
+						or nodename == "default:stone_with_diamond"
+						or nodename == "default:stone_with_gold"
+						or nodename == "default:stone_with_copper"
+						or nodename == "default:stone_with_iron"
+						or nodename == "default:stone_with_coal"
+						or nodename == "default:sandstone"
+						or nodename == "default:gravel"
+						or nodename == "default:clay"
+						or nodename == "default:obsidian" then
 							stable[si] = 2
 						else
 							stable[si] = 0
 						end
 					end
-				elseif y >= y0 and y <= y1 then -- chunk
-					local biome = false -- select biome for node
-					if n_temp < LOTET then
-						if n_humid < LOHUT then
-							biome = 1 -- tundra
-						elseif n_humid > HIHUT then
-							biome = 3 -- taiga
-						else
-							biome = 2 -- snowy plains
-						end
-					elseif n_temp > HITET then
-						if n_humid < LOHUT then
-							biome = 7 -- desert
-						elseif n_humid > HIHUT then
-							biome = 9 -- rainforest
-						else
-							biome = 8 -- savanna
+					-- set under table
+					if nofis and density >= 0 and density < tstone then -- if fine materials
+						if biome == 1 then
+							under[si] = 1
+						elseif biome == 2 then
+							under[si] = 2
+						elseif biome == 3 then
+							under[si] = 3
+						elseif biome == 4 then
+							under[si] = 4
+						elseif biome == 5 then
+							under[si] = 5
+						elseif biome == 6 then
+							under[si] = 6
+						elseif biome == 7 then
+							under[si] = 7
+						elseif biome == 8 then
+							under[si] = 8
+						elseif biome == 9 then
+							under[si] = 9
 						end
 					else
-						if n_humid < LOHUT then
-							biome = 4 -- dry grassland
-						elseif n_humid > HIHUT then
-							biome = 6 -- deciduous forest
-						else
-							biome = 5 -- grassland
-						end
+						under[si] = 0
 					end
+				elseif y >= y0 and y <= y1 then -- chunk
 					-- add nodes and flora
 					if densitybase >= tlava then -- lava
 						if densitybase >= 0 then
@@ -450,15 +487,16 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							stable[si] = 0
 							under[si] = 0
 						end
-					elseif y <= YWAT and density < tstone then -- sea water, not in fissures
-						if n_temp < ICETET and y >= YWAT - (ICETET - n_temp) * ICETHI then
-							data[vi] = c_ice
-						else
-							data[vi] = c_water
-						end
+					elseif y >= YWAT - bergdep and y <= YWAT + bergdep / 8 and n_temp < ICETET -- iceberg
+					and density < tstone and math.abs(n_fissure) > 0.01 then
+						data[vi] = c_ice
+						under[si] = 12
 						stable[si] = 0
+					elseif y <= YWAT and density < tstone then -- sea water
+						data[vi] = c_water
 						under[si] = 0
-					elseif densitybase >= triv and density < tstone then -- river water, not in fissures
+						stable[si] = 0
+					elseif densitybase >= triv and density < tstone then -- river water not in fissures
 						if n_temp < ICETET then
 							data[vi] = c_wsfreshice
 						else
@@ -477,7 +515,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						stable[si] = 0
 						under[si] = 0
 					else -- possible above surface air node
-						if y >= YWAT and under[si] ~= 0 then
+						if y > YWAT and under[si] ~= 0 then
 							local fnoise = n_fissure -- noise for flower colours
 							if under[si] == 1 then
 								if math.random(121) == 2 then
@@ -553,15 +591,17 @@ minetest.register_on_generated(function(minp, maxp, seed)
 										data[vi] = c_jungrass
 									end
 								end
-							elseif under[si] == 10 then
+							elseif under[si] == 10 then -- dunes
 								if math.random(DUGCHA) == 2 and y > YSAV 
 								and biome >= 4 then
 									data[vi] = c_wsgoldengrass
 								end
-							elseif under[si] == 11 and n_temp > HITET then
+							elseif under[si] == 11 and n_temp > HITET then -- riverbank
 								if math.random(PAPCHA) == 2 then
 									watershed_papyrus(x, y, z, area, data)
 								end
+							elseif under[si] == 12 then -- iceberg
+								data[vi] = c_snowblock
 							end
 						end
 						stable[si] = 0
