@@ -1,13 +1,13 @@
--- watershed 0.3.10 by paramat
+-- watershed 0.3.11 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos
 
--- remove randomness from n_temp n_humid
--- bugfix: initialise under table
--- TODO
--- all 2 octaves to 3 octaves for better shapes
+-- terrain and biome noise changes
+-- bugfix: under table set to 0
+-- bugfix: reset icetet value
+-- more floatlands, spikier mountains
 
 -- Parameters
 
@@ -25,7 +25,7 @@ local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 local BASAMP = 0.4 -- Base terrain amplitude
 local CANAMP = 0.4 -- Canyon terrain amplitude
 local CANEXP = 1.33 -- Canyon shape exponent
-local ATANAMP = 1.2 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 
 local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.02 -- Maximum densitybase threshold for river water
@@ -38,7 +38,7 @@ local BERGDEP = 32 -- Maximum iceberg depth
 
 local HITET = 0.35 -- High temperature threshold
 local LOTET = -0.35 -- Low ..
-local ICETET = -0.35 -- Ice ..
+local ICETET = -0.7 -- Ice ..
 local HIHUT = 0.35 -- High humidity threshold
 local LOHUT = -0.35 -- Low ..
 local BLEND = 0.03 -- Biome blend randomness
@@ -47,15 +47,15 @@ local PINCHA = 36 -- Pine tree 1/x chance per node
 local APTCHA = 36 -- Appletree
 local FLOCHA = 36 -- Flower
 local FOGCHA = 9 -- Forest grass
-local GRACHA = 4 -- Grassland grasses
+local GRACHA = 5 -- Grassland grasses
 local JUTCHA = 16 -- Jungletree
 local JUGCHA = 9 -- Junglegrass
 local CACCHA = 841 -- Cactus
 local DRYCHA = 169 -- Dry shrub
 local PAPCHA = 2 -- Papyrus
-local ACACHA = 529 -- Acacia tree
-local GOGCHA = 4 -- Golden grass
-local DUGCHA = 4 -- Dune grass
+local ACACHA = 841 -- Acacia tree
+local GOGCHA = 5 -- Golden grass
+local DUGCHA = 5 -- Dune grass
 
 -- 3D noise for rough terrain
 
@@ -76,7 +76,7 @@ local np_smooth = {
 	spread = {x=512, y=512, z=512},
 	seed = 593,
 	octaves = 6,
-	persist = 0.4
+	persist = 0.33
 }
 
 -- 3D noise for fissures
@@ -97,7 +97,7 @@ local np_temp = {
 	scale = 1,
 	spread = {x=512, y=512, z=512},
 	seed = 9130,
-	octaves = 2,
+	octaves = 3,
 	persist = 0.5
 }
 
@@ -108,7 +108,7 @@ local np_humid = {
 	scale = 1,
 	spread = {x=512, y=512, z=512},
 	seed = -55500,
-	octaves = 2,
+	octaves = 3,
 	persist = 0.5
 }
 
@@ -130,7 +130,7 @@ local np_strata = {
 	scale = 1,
 	spread = {x=512, y=512, z=512},
 	seed = 92219,
-	octaves = 2,
+	octaves = 3,
 	persist = 0.5
 }
 
@@ -142,7 +142,7 @@ local np_base = {
 	spread = {x=4096, y=4096, z=4096},
 	seed = 8890,
 	octaves = 4,
-	persist = 0.4
+	persist = 0.33
 }
 
 -- 2D noise for extra large scale height variation
@@ -288,10 +288,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				
 				local triv = TRIV * (1 - terblen) -- other values
 				local tsand = TSAND * (1 - terblen)
-				local tstone = math.max(TSTONE * (1 + grad * 0.5), 0)
+				local tstone = TSTONE * (1 + grad * 0.5)
 				local tlava = TLAVA * (1 - n_magma ^ 4 * terblen ^ 16 * 0.5)
 				local ysand = YSAV + n_fissure * SAMP + math.random() * 2
-				local bergdep = math.abs(n_magma) * BERGDEP
+				local bergdep = math.abs(n_seam) * BERGDEP
 				
 				local nofis = false -- set fissure bool
 				if math.abs(n_fissure) > math.sqrt(density) * FISEXP then
@@ -326,8 +326,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				end
 				
 				-- overgeneration and in-chunk generation
-				if y == y0 - 1 then -- node layer below chunk
-					-- set stable table
+				if y == y0 - 1 then -- node layer below chunk, initialise tables
+					under[si] = 0 -- 0 to stop floating surface nodes bug
 					if ungen then
 						if nofis and density >= 0 then -- if node solid
 							stable[si] = 2
@@ -357,30 +357,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						else
 							stable[si] = 0
 						end
-					end
-					-- set under table
-					if nofis and density >= 0 and density < tstone then -- if fine materials
-						if biome == 1 then
-							under[si] = 1
-						elseif biome == 2 then
-							under[si] = 2
-						elseif biome == 3 then
-							under[si] = 3
-						elseif biome == 4 then
-							under[si] = 4
-						elseif biome == 5 then
-							under[si] = 5
-						elseif biome == 6 then
-							under[si] = 6
-						elseif biome == 7 then
-							under[si] = 7
-						elseif biome == 8 then
-							under[si] = 8
-						elseif biome == 9 then
-							under[si] = 9
-						end
-					else
-						under[si] = 0
 					end
 				elseif y >= y0 and y <= y1 then -- chunk
 					-- add nodes and flora
