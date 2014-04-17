@@ -4,10 +4,8 @@
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos
 
--- terrain and biome noise changes
--- bugfix: under table set to 0
--- bugfix: reset icetet value
--- more floatlands, spikier mountains
+-- bugfix spawn function
+-- 2 iron ore layers
 
 -- Parameters
 
@@ -191,10 +189,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	
 	print ("[watershed] chunk minp ("..x0.." "..y0.." "..z0..")")
 	-- voxelmanip stuff
-	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
-	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
-	local data = vm:get_data()
-	
+	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip") -- min, max points for emerged area/voxelarea
+	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax} -- voxelarea helper for indexes
+	local data = vm:get_data() -- get flat array of voxelarea content ids
+	-- content ids
 	local c_air = minetest.get_content_id("air")
 	local c_water = minetest.get_content_id("default:water_source")
 	local c_sand = minetest.get_content_id("default:sand")
@@ -235,11 +233,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
 	local c_wsluxoreoff = minetest.get_content_id("watershed:luxoreoff")
 	-- perlinmap stuff
-	local sidelen = x1 - x0 + 1
-	local chulens = {x=sidelen, y=sidelen+2, z=sidelen}
-	local minposxyz = {x=x0, y=y0-1, z=z0}
+	local sidelen = x1 - x0 + 1 -- chunk sidelength
+	local chulens = {x=sidelen, y=sidelen+2, z=sidelen} -- chunk dimensions, '+2' for overgeneration
+	local minposxyz = {x=x0, y=y0-1, z=z0} -- 3D and 2D perlinmaps start from these co-ordinates, '-1' for overgeneration
 	local minposxz = {x=x0, y=z0}
-	
+	-- 3D and 2D perlinmaps
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
 	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
@@ -257,18 +255,18 @@ minetest.register_on_generated(function(minp, maxp, seed)
 		ungen = true
 	end
 	-- mapgen loop
-	local nixyz = 1
+	local nixyz = 1 -- 3D and 2D perlinmap indexes
 	local nixz = 1
 	local stable = {} -- stability table of true/false. is node supported from below by 2 stone or nodes on 2 stone?
 	local under = {} -- biome table. biome number of previous fine material placed in column
 	for z = z0, z1 do -- for each xy plane progressing northwards
 		for y = y0 - 1, y1 + 1 do -- for each x row progressing upwards
-			local vi = area:index(x0, y, z)
-			local viu = area:index(x0, y-1, z)
+			local vi = area:index(x0, y, z) -- voxelmanip index for first node in this x row
+			local viu = area:index(x0, y-1, z) -- index for under node
 			for x = x0, x1 do -- for each node do
 				local si = x - x0 + 1 -- stable, under tables index
-				
-				local n_rough = nvals_rough[nixyz] -- noise values for node
+				-- noise values for node
+				local n_rough = nvals_rough[nixyz]
 				local n_smooth = nvals_smooth[nixyz]
 				local n_fissure = nvals_fissure[nixyz]
 				local n_temp = nvals_temp[nixyz]
@@ -281,17 +279,17 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local n_magma = nvals_magma[nixz]
 				-- get densitybase and density
 				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP -- vertical density gradient
-				local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad -- base terrain or ridge networks
-				local terblen = math.max(1 - math.abs(n_base), 0) -- terrain blend rough and smooth
+				local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad -- base terrain
+				local terblen = math.max(1 - math.abs(n_base), 0) -- canyon terrain blend of rough and smooth
 				local density = densitybase
 				+ math.abs(n_rough * terblen + n_smooth * (1 - terblen)) ^ CANEXP * CANAMP -- add canyon terrain
-				
-				local triv = TRIV * (1 - terblen) -- other values
-				local tsand = TSAND * (1 - terblen)
-				local tstone = TSTONE * (1 + grad * 0.5)
-				local tlava = TLAVA * (1 - n_magma ^ 4 * terblen ^ 16 * 0.5)
-				local ysand = YSAV + n_fissure * SAMP + math.random() * 2
-				local bergdep = math.abs(n_seam) * BERGDEP
+				-- other values
+				local triv = TRIV * (1 - terblen) -- river threshold
+				local tsand = TSAND * (1 - terblen) -- sand threshold
+				local tstone = TSTONE * (1 + grad * 0.5) -- stone threshold
+				local tlava = TLAVA * (1 - n_magma ^ 4 * terblen ^ 16 * 0.5) -- lava threshold
+				local ysand = YSAV + n_fissure * SAMP + math.random() * 2 -- sandline
+				local bergdep = math.abs(n_seam) * BERGDEP -- iceberg depth
 				
 				local nofis = false -- set fissure bool
 				if math.abs(n_fissure) > math.sqrt(density) * FISEXP then
@@ -385,8 +383,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							data[vi] = c_sandstone
 						elseif biome == 7 and density < TSTONE * 4 then -- desert stone as surface layer
 							data[vi] = c_wsredstone
-						elseif math.abs(n_seam) < SEAMT then -- if seam
-							if densityper >= 0 and densityper <= ORETHI * 4 then
+						elseif math.abs(n_seam) < SEAMT then
+							if densityper >= 0 and densityper <= ORETHI * 4 then -- ore seams
 								data[vi] = c_stocoal
 							elseif densityper >= 0.3 and densityper <= 0.3 + ORETHI * 4 then
 								data[vi] = c_stocoal
@@ -399,6 +397,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							elseif densityper >= 0.1 and densityper <= 0.1 + ORETHI * 2 then
 								data[vi] = c_wsluxoreoff
 							elseif densityper >= 0.2 and densityper <= 0.2 + ORETHI * 2
+							and math.random(2) == 2 then
+								data[vi] = c_stoiron
+							elseif densityper >= 0.65 and densityper <= 0.65 + ORETHI * 2
 							and math.random(2) == 2 then
 								data[vi] = c_stoiron
 							elseif densityper >= 0.4 and densityper <= 0.4 + ORETHI * 2
@@ -610,7 +611,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 					end
 				end
-				nixyz = nixyz + 1
+				nixyz = nixyz + 1 -- increment perlinmap and voxelarea indexes along x row
 				nixz = nixz + 1
 				vi = vi + 1
 				viu = viu + 1

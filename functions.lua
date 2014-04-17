@@ -226,7 +226,7 @@ if SINGLENODE then
 	function spawnplayer(player)
 		local TERCEN = -160 -- Terrain 'centre', average seabed level
 		local TERSCA = 512 -- Vertical terrain scale
-		local ATANAMP = 1.2 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+		local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 		local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 		local BASAMP = 0.4 -- Base terrain amplitude
 		local CANAMP = 0.4 -- Canyon terrain amplitude
@@ -248,7 +248,7 @@ if SINGLENODE then
 			spread = {x=512, y=512, z=512},
 			seed = 593,
 			octaves = 6,
-			persist = 0.4
+			persist = 0.33
 		}
 		local np_base = {
 			offset = 0,
@@ -256,7 +256,7 @@ if SINGLENODE then
 			spread = {x=4096, y=4096, z=4096},
 			seed = 8890,
 			octaves = 4,
-			persist = 0.4
+			persist = 0.33
 		}
 		local np_xlscale = {
 			offset = 0,
