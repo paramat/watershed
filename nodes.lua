@@ -24,6 +24,7 @@ minetest.register_node("watershed:acaciatree", {
 	description = "WS Acacia Tree",
 	tiles = {"watershed_acaciatreetop.png", "watershed_acaciatreetop.png", "watershed_acaciatree.png"},
 	paramtype2 = "facedir",
+	is_ground_content = false,
 	groups = {tree=1,choppy=2,oddly_breakable_by_hand=1,flammable=2},
 	sounds = default.node_sound_wood_defaults(),
 	on_place = minetest.rotate_node
@@ -44,6 +45,7 @@ minetest.register_node("watershed:pinetree", {
 	description = "WS Pine Tree",
 	tiles = {"watershed_pinetreetop.png", "watershed_pinetreetop.png", "watershed_pinetree.png"},
 	paramtype2 = "facedir",
+	is_ground_content = false,
 	groups = {tree=1,choppy=2,oddly_breakable_by_hand=1,flammable=2},
 	sounds = default.node_sound_wood_defaults(),
 	on_place = minetest.rotate_node
@@ -67,6 +69,18 @@ minetest.register_node("watershed:dirt", {
 	groups = {crumbly=3,soil=1},
 	drop = "default:dirt",
 	sounds = default.node_sound_dirt_defaults(),
+})
+
+minetest.register_node("watershed:icydirt", {
+	description = "WS Icy Dirt",
+	tiles = {"watershed_icydirt.png"},
+	is_ground_content = false,
+	groups = {crumbly=1},
+	drop = "default:dirt",
+	sounds = default.node_sound_dirt_defaults({
+		footstep = {name="default_snow_footstep", gain=0.15},
+		dug = {name="default_snow_footstep", gain=0.45},
+	}),
 })
 
 minetest.register_node("watershed:grass", {
@@ -139,7 +153,7 @@ minetest.register_node("watershed:drygrass", {
 	description = "WS Dry Grass",
 	tiles = {"watershed_drygrass.png"},
 	is_ground_content = false,
-	groups = {crumbly=3,soil=1},
+	groups = {crumbly=1,soil=1},
 	drop = "default:dirt",
 	sounds = default.node_sound_dirt_defaults({
 		footstep = {name="default_grass_footstep", gain=0.4},
@@ -150,7 +164,7 @@ minetest.register_node("watershed:permafrost", {
 	description = "WS Permafrost",
 	tiles = {"watershed_permafrost.png"},
 	is_ground_content = false,
-	groups = {crumbly=2},
+	groups = {crumbly=1},
 	drop = "default:dirt",
 	sounds = default.node_sound_dirt_defaults(),
 })
@@ -194,6 +208,7 @@ minetest.register_node("watershed:luxoreoff", {
 	description = "WS Lux Ore Off",
 	tiles = {"watershed_luxore.png"},
 	light_source = 14,
+	is_ground_content = false,
 	groups = {cracky=3},
 	drop = "watershed:luxcrystal 8",
 	sounds = default.node_sound_glass_defaults(),

@@ -1,11 +1,17 @@
--- watershed 0.3.11 by paramat
+-- watershed 0.3.12 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos
 
--- bugfix spawn function
--- 2 iron ore layers
+-- snowy iceberg only if humid enough
+-- add rough alt, smooth alt noises for harmonic noise
+-- persistence to 0.67 for rough noises
+-- half scale of smooth noise for flatter lowlands
+-- 1 less octave for smooth noise
+-- fix sea ice in tundra at y = 47
+-- removed snow from tundra
+-- New icydirt surface node in tundra
 
 -- Parameters
 
@@ -63,7 +69,7 @@ local np_rough = {
 	spread = {x=512, y=512, z=512},
 	seed = 593,
 	octaves = 6,
-	persist = 0.63
+	persist = 0.67
 }
 
 -- 3D noise for smooth terrain
@@ -73,7 +79,29 @@ local np_smooth = {
 	scale = 1,
 	spread = {x=512, y=512, z=512},
 	seed = 593,
+	octaves = 5,
+	persist = 0.33
+}
+
+-- 3D noise for alt rough terrain
+
+local np_roughalt = {
+	offset = 0,
+	scale = 1,
+	spread = {x=414, y=414, z=414},
+	seed = -9003,
 	octaves = 6,
+	persist = 0.67
+}
+
+-- 3D noise for alt smooth terrain
+
+local np_smoothalt = {
+	offset = 0,
+	scale = 1,
+	spread = {x=414, y=414, z=414},
+	seed = -9003,
+	octaves = 5,
 	persist = 0.33
 }
 
@@ -232,6 +260,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wsfreshice = minetest.get_content_id("watershed:freshice")
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
 	local c_wsluxoreoff = minetest.get_content_id("watershed:luxoreoff")
+	local c_wsicydirt = minetest.get_content_id("watershed:icydirt")
 	-- perlinmap stuff
 	local sidelen = x1 - x0 + 1 -- chunk sidelength
 	local chulens = {x=sidelen, y=sidelen+2, z=sidelen} -- chunk dimensions, '+2' for overgeneration
@@ -240,6 +269,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	-- 3D and 2D perlinmaps
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
 	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
+	local nvals_roughalt = minetest.get_perlin_map(np_roughalt, chulens):get3dMap_flat(minposxyz)
+	local nvals_smoothalt = minetest.get_perlin_map(np_smoothalt, chulens):get3dMap_flat(minposxyz)
 	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
 	local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
 	local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
@@ -268,6 +299,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				-- noise values for node
 				local n_rough = nvals_rough[nixyz]
 				local n_smooth = nvals_smooth[nixyz]
+				local n_roughalt = nvals_roughalt[nixyz]
+				local n_smoothalt = nvals_smoothalt[nixyz]
 				local n_fissure = nvals_fissure[nixyz]
 				local n_temp = nvals_temp[nixyz]
 				local n_humid = nvals_humid[nixyz]
@@ -281,8 +314,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP -- vertical density gradient
 				local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad -- base terrain
 				local terblen = math.max(1 - math.abs(n_base), 0) -- canyon terrain blend of rough and smooth
-				local density = densitybase
-				+ math.abs(n_rough * terblen + n_smooth * (1 - terblen)) ^ CANEXP * CANAMP -- add canyon terrain
+				local density = densitybase + -- add canyon terrain
+				math.abs((n_rough + n_roughalt) * 0.5 * terblen +
+				(n_smooth + n_smoothalt) * 0.25 * (1 - terblen)) ^ CANEXP * CANAMP
 				-- other values
 				local triv = TRIV * (1 - terblen) -- river threshold
 				local tsand = TSAND * (1 - terblen) -- sand threshold
@@ -495,15 +529,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						if y > YWAT and under[si] ~= 0 then
 							local fnoise = n_fissure -- noise for flower colours
 							if under[si] == 1 then
-								if math.random(121) == 2 then
-									data[viu] = c_snowblock
-								elseif math.random(121) == 2 then
-									data[viu] = c_wsfreshice
-								else
-									data[viu] = c_wsdrygrass
-									if math.random(DRYCHA) == 2 then
-										data[vi] = c_dryshrub
-									end
+								data[viu] = c_wsicydirt
+								if math.random(DRYCHA) == 2 then
+									data[vi] = c_dryshrub
 								end
 							elseif under[si] == 2 then
 								data[viu] = c_dirtsnow
@@ -573,11 +601,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								and biome >= 4 then
 									data[vi] = c_wsgoldengrass
 								end
-							elseif under[si] == 11 and n_temp > HITET then -- riverbank
+							elseif under[si] == 11 and n_temp > HITET then -- hot biome riverbank
 								if math.random(PAPCHA) == 2 then
 									watershed_papyrus(x, y, z, area, data)
 								end
-							elseif under[si] == 12 then -- iceberg
+							elseif under[si] == 12 and n_humid > LOHUT then -- snowy iceberg
 								data[vi] = c_snowblock
 							end
 						end
@@ -587,13 +615,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				elseif y == y1 + 1 then -- plane of nodes above chunk
 					if density < 0 and y >= YWAT + 1 and under[si] ~= 0 then -- if air above fine materials
 						if under[si] == 1 then -- add surface nodes to chunk top layer
-							if math.random(121) == 2 then
-								data[viu] = c_dirtsnow
-							elseif math.random(121) == 2 then
-								data[viu] = c_ice
-							else
-								data[viu] = c_wsdrygrass
-							end
+							data[viu] = c_wsicydirt
 						elseif under[si] == 2 then
 							data[viu] = c_dirtsnow
 						elseif under[si] == 3 then
