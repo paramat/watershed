@@ -1,17 +1,10 @@
--- watershed 0.3.12 by paramat
+-- watershed 0.3.13 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos
 
--- snowy iceberg only if humid enough
--- add rough alt, smooth alt noises for harmonic noise
--- persistence to 0.67 for rough noises
--- half scale of smooth noise for flatter lowlands
--- 1 less octave for smooth noise
--- fix sea ice in tundra at y = 47
--- removed snow from tundra
--- New icydirt surface node in tundra
+-- y = 47 bugfix: add snowblocks in chunk above
 
 -- Parameters
 
@@ -359,7 +352,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				
 				-- overgeneration and in-chunk generation
 				if y == y0 - 1 then -- node layer below chunk, initialise tables
-					under[si] = 0 -- 0 to stop floating surface nodes bug
+					under[si] = 0
 					if ungen then
 						if nofis and density >= 0 then -- if node solid
 							stable[si] = 2
@@ -618,8 +611,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							data[viu] = c_wsicydirt
 						elseif under[si] == 2 then
 							data[viu] = c_dirtsnow
+							data[vi] = c_snowblock -- snowblocks in chunk above
 						elseif under[si] == 3 then
 							data[viu] = c_dirtsnow
+							data[vi] = c_snowblock
 						elseif under[si] == 4 then
 							data[viu] = c_wsdrygrass
 						elseif under[si] == 5 then
