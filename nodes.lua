@@ -85,7 +85,7 @@ minetest.register_node("watershed:icydirt", {
 
 minetest.register_node("watershed:grass", {
 	description = "WS Grass",
-	tiles = {"default_grass.png", "default_dirt.png", "default_dirt.png^default_grass_side.png"},
+	tiles = {"default_grass.png", "default_dirt.png", "default_grass.png"},
 	is_ground_content = false,
 	groups = {crumbly=3,soil=1},
 	drop = "default:dirt",
@@ -278,8 +278,8 @@ minetest.register_node("watershed:freshwater", {
 	liquid_alternative_source = "watershed:freshwater",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 2,
-	post_effect_color = {a=64, r=100, g=100, b=200},
+	liquid_range = 4,
+	post_effect_color = {a=64, r=100, g=150, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1},
 })
 
@@ -315,8 +315,8 @@ minetest.register_node("watershed:freshwaterflow", {
 	liquid_alternative_source = "watershed:freshwater",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 2,
-	post_effect_color = {a=64, r=100, g=100, b=200},
+	liquid_range = 4,
+	post_effect_color = {a=64, r=100, g=150, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1, not_in_creative_inventory=1},
 })
 
@@ -395,6 +395,81 @@ minetest.register_node("watershed:lavaflow", {
 	groups = {lava=3, liquid=2, hot=3, igniter=1, not_in_creative_inventory=1},
 })
 
+minetest.register_node("watershed:mixwater", {
+	description = "WS Mixed Water Source",
+	inventory_image = minetest.inventorycube("watershed_mixwater.png"),
+	drawtype = "liquid",
+	tiles = {
+		{
+			name="watershed_mixwateranim.png",
+			animation={type="vertical_frames",
+			aspect_w=16, aspect_h=16, length=2.0}
+		}
+	},
+	special_tiles = {
+		{
+			name="watershed_mixwateranim.png",
+			animation={type="vertical_frames",
+			aspect_w=16, aspect_h=16, length=2.0},
+			backface_culling = false,
+		}
+	},
+	alpha = WATER_ALPHA,
+	paramtype = "light",
+	is_ground_content = false,
+	walkable = false,
+	pointable = false,
+	diggable = false,
+	buildable_to = true,
+	drop = "",
+	drowning = 1,
+	liquidtype = "source",
+	liquid_alternative_flowing = "watershed:mixwaterflow",
+	liquid_alternative_source = "watershed:mixwater",
+	liquid_viscosity = WATER_VISC,
+	liquid_renewable = false,
+	liquid_range = 4,
+	post_effect_color = {a=64, r=100, g=120, b=200},
+	groups = {water=3, liquid=3, puts_out_fire=1},
+})
+
+minetest.register_node("watershed:mixwaterflow", {
+	description = "WS Flowing Mixed Water",
+	inventory_image = minetest.inventorycube("watershed_mixwater.png"),
+	drawtype = "flowingliquid",
+	tiles = {"watershed_mixwater.png"},
+	special_tiles = {
+		{
+			image="watershed_mixwaterflowanim.png",
+			backface_culling=false,
+			animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=0.8}
+		},
+		{
+			image="watershed_mixwaterflowanim.png",
+			backface_culling=true,
+			animation={type="vertical_frames", aspect_w=16, aspect_h=16, length=0.8}
+		},
+	},
+	alpha = WATER_ALPHA,
+	paramtype = "light",
+	paramtype2 = "flowingliquid",
+	is_ground_content = false,
+	walkable = false,
+	pointable = false,
+	diggable = false,
+	buildable_to = true,
+	drop = "",
+	drowning = 1,
+	liquidtype = "flowing",
+	liquid_alternative_flowing = "watershed:mixwaterflow",
+	liquid_alternative_source = "watershed:mixwater",
+	liquid_viscosity = WATER_VISC,
+	liquid_renewable = false,
+	liquid_range = 4,
+	post_effect_color = {a=64, r=100, g=120, b=200},
+	groups = {water=3, liquid=3, puts_out_fire=1, not_in_creative_inventory=1},
+})
+
 -- Items
 
 minetest.register_craftitem("watershed:luxcrystal", {
@@ -411,10 +486,11 @@ minetest.register_craft({
 })
 
 minetest.register_craft({
-    output = "watershed:light",
+    output = "watershed:light 8",
     recipe = {
-        {"default:glass"},
-        {"watershed:luxcrystal"},
+        {"default:glass", "default:glass", "default:glass"},
+        {"default:glass", "watershed:luxcrystal", "default:glass"},
+        {"default:glass", "default:glass", "default:glass"},
     },
 })
 

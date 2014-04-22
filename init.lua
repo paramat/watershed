@@ -1,10 +1,13 @@
--- watershed 0.3.13 by paramat
+-- watershed 0.3.14 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos
 
--- y = 47 bugfix: add snowblocks in chunk above
+-- light crafting gives 8 lights
+-- mid colour water at y == 2
+-- flatter lowlands: terblen exponent, vary canexp, canamp
+-- grassy sides on mod grass
 
 -- Parameters
 
@@ -20,9 +23,9 @@ local CLOUDS = true -- Mod clouds?
 local TERSCA = 512 -- Vertical terrain scale
 local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 local BASAMP = 0.4 -- Base terrain amplitude
-local CANAMP = 0.4 -- Canyon terrain amplitude
-local CANEXP = 1.33 -- Canyon shape exponent
+local CANAMP = 0.4 -- Canyon terrain maximum amplitude
 local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+local BLENEXP = 2 -- Terrain blend exponent
 
 local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.02 -- Maximum densitybase threshold for river water
@@ -160,7 +163,7 @@ local np_base = {
 	scale = 1,
 	spread = {x=4096, y=4096, z=4096},
 	seed = 8890,
-	octaves = 4,
+	octaves = 3,
 	persist = 0.33
 }
 
@@ -172,7 +175,7 @@ local np_xlscale = {
 	spread = {x=8192, y=8192, z=8192},
 	seed = -72,
 	octaves = 3,
-	persist = 0.4
+	persist = 0.33
 }
 
 -- 2D noise for magma surface
@@ -242,6 +245,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_obsidian = minetest.get_content_id("default:obsidian")
 	
 	local c_wsfreshwater = minetest.get_content_id("watershed:freshwater")
+	local c_wsmixwater = minetest.get_content_id("watershed:mixwater")
 	local c_wsstone = minetest.get_content_id("watershed:stone")
 	local c_wsredstone = minetest.get_content_id("watershed:redstone")
 	local c_wsgrass = minetest.get_content_id("watershed:grass")
@@ -304,12 +308,14 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local n_xlscale = nvals_xlscale[nixz]
 				local n_magma = nvals_magma[nixz]
 				-- get densitybase and density
-				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP -- vertical density gradient
-				local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad -- base terrain
-				local terblen = math.max(1 - math.abs(n_base), 0) -- canyon terrain blend of rough and smooth
-				local density = densitybase + -- add canyon terrain
+				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
+				local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad
+				local terblen = (math.max(1 - math.abs(n_base), 0)) ^ BLENEXP
+				local canexp = 0.5 + terblen
+				local canamp = 0.03 + terblen * CANAMP
+				local density = densitybase +
 				math.abs((n_rough + n_roughalt) * 0.5 * terblen +
-				(n_smooth + n_smoothalt) * 0.25 * (1 - terblen)) ^ CANEXP * CANAMP
+				(n_smooth + n_smoothalt) * 0.5 * (1 - terblen)) ^ canexp * canamp
 				-- other values
 				local triv = TRIV * (1 - terblen) -- river threshold
 				local tsand = TSAND * (1 - terblen) -- sand threshold
@@ -396,8 +402,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						stable[si] = 1
 						under[si] = 0
 					elseif density >= tstone and nofis  -- stone cut by fissures
-					or (density >= tstone and density < TSTONE * 2 and y <= YWAT) -- stone around water
-					or (density >= tstone and density < TSTONE * 2 and densitybase >= triv ) then -- stone around river
+					or (density >= tstone and density < TSTONE * 1.5 and y <= YWAT) -- stone around water
+					or (density >= tstone and density < TSTONE * 1.5 and densitybase >= triv ) then -- stone around river
 						local densitystr = n_strata * 0.25 + (TERCEN - y) / TERSCA
 						local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
 						if (densityper >= 0.05 and densityper <= 0.09) -- sandstone strata
@@ -408,7 +414,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						or (densityper >= 0.84 and densityper <= 0.87)
 						or (densityper >= 0.95 and densityper <= 0.98) then
 							data[vi] = c_sandstone
-						elseif biome == 7 and density < TSTONE * 4 then -- desert stone as surface layer
+						elseif biome == 7 and density < TSTONE * 3 then -- desert stone as surface layer
 							data[vi] = c_wsredstone
 						elseif math.abs(n_seam) < SEAMT then
 							if densityper >= 0 and densityper <= ORETHI * 4 then -- ore seams
@@ -491,7 +497,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							stable[si] = 0
 							under[si] = 0
 						end
-					elseif y >= YWAT - bergdep and y <= YWAT + bergdep / 8 and n_temp < ICETET -- iceberg
+					elseif y >= YWAT - bergdep and y <= YWAT + bergdep / 8 and n_temp < ICETET -- icesheet
 					and density < tstone and math.abs(n_fissure) > 0.01 then
 						data[vi] = c_ice
 						under[si] = 12
@@ -504,7 +510,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						if n_temp < ICETET then
 							data[vi] = c_wsfreshice
 						else
-							data[vi] = c_wsfreshwater
+							if y == YWAT + 1 then
+								data[vi] = c_wsmixwater
+							else
+								data[vi] = c_wsfreshwater
+							end
 						end
 						stable[si] = 0
 						under[si] = 0
@@ -598,7 +608,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								if math.random(PAPCHA) == 2 then
 									watershed_papyrus(x, y, z, area, data)
 								end
-							elseif under[si] == 12 and n_humid > LOHUT then -- snowy iceberg
+							elseif under[si] == 12
+							and n_humid > LOHUT + (math.random() - 0.5) * BLEND then -- snowy iceberg
 								data[vi] = c_snowblock
 							end
 						end

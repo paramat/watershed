@@ -229,8 +229,8 @@ if SINGLENODE then
 		local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 		local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 		local BASAMP = 0.4 -- Base terrain amplitude
-		local CANAMP = 0.4 -- Canyon terrain amplitude
-		local CANEXP = 1.33 -- Canyon shape exponent
+		local CANAMP = 0.4 -- Canyon terrain maximum amplitude
+		local BLENEXP = 2 -- Terrain blend exponent
 		local xsp
 		local ysp
 		local zsp
@@ -271,7 +271,7 @@ if SINGLENODE then
 			scale = 1,
 			spread = {x=4096, y=4096, z=4096},
 			seed = 8890,
-			octaves = 4,
+			octaves = 3,
 			persist = 0.33
 		}
 		local np_xlscale = {
@@ -280,7 +280,7 @@ if SINGLENODE then
 			spread = {x=8192, y=8192, z=8192},
 			seed = -72,
 			octaves = 3,
-			persist = 0.4
+			persist = 0.33
 		}
 		for chunk = 1, 64 do
 			print ("[watershed] searching for spawn "..chunk)
@@ -317,10 +317,12 @@ if SINGLENODE then
 						local n_xlscale = nvals_xlscale[nixz]
 						local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
 						local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad
-						local terblen = math.max(1 - math.abs(n_base), 0)
+						local terblen = (math.max(1 - math.abs(n_base), 0)) ^ BLENEXP
+						local canexp = 0.5 + terblen
+						local canamp = 0.03 + terblen * CANAMP
 						local density = densitybase +
 						math.abs((n_rough + n_roughalt) * 0.5 * terblen +
-						(n_smooth + n_smoothalt) * 0.25 * (1 - terblen)) ^ CANEXP * CANAMP
+						(n_smooth + n_smoothalt) * 0.5 * (1 - terblen)) ^ canexp * canamp
 						if y >= 1 and density > -0.01 and density < 0 then
 							ysp = y + 1
 							xsp = x
