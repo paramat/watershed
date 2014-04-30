@@ -237,34 +237,18 @@ if SINGLENODE then
 		local np_rough = {
 			offset = 0,
 			scale = 1,
-			spread = {x=512, y=512, z=512},
+			spread = {x=512, y=256, z=512},
 			seed = 593,
 			octaves = 6,
 			persist = 0.67
-		}
-		local np_smooth = {
-			offset = 0,
-			scale = 1,
-			spread = {x=512, y=512, z=512},
-			seed = 593,
-			octaves = 5,
-			persist = 0.33
 		}
 		local np_roughalt = {
 			offset = 0,
 			scale = 1,
-			spread = {x=414, y=414, z=414},
+			spread = {x=414, y=207, z=414},
 			seed = -9003,
 			octaves = 6,
 			persist = 0.67
-		}
-		local np_smoothalt = {
-			offset = 0,
-			scale = 1,
-			spread = {x=414, y=414, z=414},
-			seed = -9003,
-			octaves = 5,
-			persist = 0.33
 		}
 		local np_base = {
 			offset = 0,
@@ -297,9 +281,7 @@ if SINGLENODE then
 			local minposxz = {x=x0, y=z0}
 
 			local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
-			local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
 			local nvals_roughalt = minetest.get_perlin_map(np_roughalt, chulens):get3dMap_flat(minposxyz)
-			local nvals_smoothalt = minetest.get_perlin_map(np_smoothalt, chulens):get3dMap_flat(minposxyz)
 
 			local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 			local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
@@ -310,19 +292,15 @@ if SINGLENODE then
 				for y = y0, y1 do
 					for x = x0, x1 do
 						local n_rough = nvals_rough[nixyz]
-						local n_smooth = nvals_smooth[nixyz]
 						local n_roughalt = nvals_roughalt[nixyz]
-						local n_smoothalt = nvals_smoothalt[nixyz]
 						local n_base = nvals_base[nixz]
 						local n_xlscale = nvals_xlscale[nixz]
 						local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
 						local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad
 						local terblen = (math.max(1 - math.abs(n_base), 0)) ^ BLENEXP
 						local canexp = 0.5 + terblen
-						local canamp = 0.03 + terblen * CANAMP
-						local density = densitybase +
-						math.abs((n_rough + n_roughalt) * 0.5 * terblen +
-						(n_smooth + n_smoothalt) * 0.5 * (1 - terblen)) ^ canexp * canamp
+						local canamp = 0.01 + terblen * CANAMP
+						local density = densitybase + math.abs((n_rough + n_roughalt) * 0.5) ^ canexp * canamp
 						if y >= 1 and density > -0.01 and density < 0 then
 							ysp = y + 1
 							xsp = x

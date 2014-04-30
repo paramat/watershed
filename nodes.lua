@@ -196,6 +196,7 @@ minetest.register_node("watershed:cloud", {
 	drawtype = "glasslike",
 	tiles = {"watershed_cloud.png"},
 	paramtype = "light",
+	is_ground_content = false,
 	sunlight_propagates = true,
 	walkable = false,
 	pointable = false,

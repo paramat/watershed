@@ -1,13 +1,12 @@
--- watershed 0.3.14 by paramat
+-- watershed 0.3.15 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos
 
--- light crafting gives 8 lights
--- mid colour water at y == 2
--- flatter lowlands: terblen exponent, vary canexp, canamp
--- grassy sides on mod grass
+-- removed 2 unnecessary 3D noises for speed 4-5s per chunk
+-- squashed terrain noise
+-- flattened lowlands
 
 -- Parameters
 
@@ -31,7 +30,7 @@ local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
 local TRIV = -0.02 -- Maximum densitybase threshold for river water
 local TSAND = -0.025 -- Maximum densitybase threshold for river sand
 local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
-local FISEXP = 0.03 -- Fissure expansion rate under surface
+local TFIS = 0.01 -- Fissure threshold, controls width
 local ORETHI = 0.002 -- Ore seam thickness tuner
 local SEAMT = 0.2 -- Seam threshold, width of seams
 local BERGDEP = 32 -- Maximum iceberg depth
@@ -62,21 +61,10 @@ local DUGCHA = 5 -- Dune grass
 local np_rough = {
 	offset = 0,
 	scale = 1,
-	spread = {x=512, y=512, z=512},
+	spread = {x=512, y=256, z=512},
 	seed = 593,
 	octaves = 6,
 	persist = 0.67
-}
-
--- 3D noise for smooth terrain
-
-local np_smooth = {
-	offset = 0,
-	scale = 1,
-	spread = {x=512, y=512, z=512},
-	seed = 593,
-	octaves = 5,
-	persist = 0.33
 }
 
 -- 3D noise for alt rough terrain
@@ -84,21 +72,10 @@ local np_smooth = {
 local np_roughalt = {
 	offset = 0,
 	scale = 1,
-	spread = {x=414, y=414, z=414},
+	spread = {x=414, y=207, z=414},
 	seed = -9003,
 	octaves = 6,
 	persist = 0.67
-}
-
--- 3D noise for alt smooth terrain
-
-local np_smoothalt = {
-	offset = 0,
-	scale = 1,
-	spread = {x=414, y=414, z=414},
-	seed = -9003,
-	octaves = 5,
-	persist = 0.33
 }
 
 -- 3D noise for fissures
@@ -265,9 +242,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local minposxz = {x=x0, y=z0}
 	-- 3D and 2D perlinmaps
 	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
-	local nvals_smooth = minetest.get_perlin_map(np_smooth, chulens):get3dMap_flat(minposxyz)
 	local nvals_roughalt = minetest.get_perlin_map(np_roughalt, chulens):get3dMap_flat(minposxyz)
-	local nvals_smoothalt = minetest.get_perlin_map(np_smoothalt, chulens):get3dMap_flat(minposxyz)
 	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
 	local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
 	local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
@@ -295,9 +270,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local si = x - x0 + 1 -- stable, under tables index
 				-- noise values for node
 				local n_rough = nvals_rough[nixyz]
-				local n_smooth = nvals_smooth[nixyz]
 				local n_roughalt = nvals_roughalt[nixyz]
-				local n_smoothalt = nvals_smoothalt[nixyz]
 				local n_fissure = nvals_fissure[nixyz]
 				local n_temp = nvals_temp[nixyz]
 				local n_humid = nvals_humid[nixyz]
@@ -312,10 +285,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad
 				local terblen = (math.max(1 - math.abs(n_base), 0)) ^ BLENEXP
 				local canexp = 0.5 + terblen
-				local canamp = 0.03 + terblen * CANAMP
-				local density = densitybase +
-				math.abs((n_rough + n_roughalt) * 0.5 * terblen +
-				(n_smooth + n_smoothalt) * 0.5 * (1 - terblen)) ^ canexp * canamp
+				local canamp = 0.01 + terblen * CANAMP
+				local density = densitybase + math.abs((n_rough + n_roughalt) * 0.5) ^ canexp * canamp
 				-- other values
 				local triv = TRIV * (1 - terblen) -- river threshold
 				local tsand = TSAND * (1 - terblen) -- sand threshold
@@ -325,7 +296,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local bergdep = math.abs(n_seam) * BERGDEP -- iceberg depth
 				
 				local nofis = false -- set fissure bool
-				if math.abs(n_fissure) > math.sqrt(density) * FISEXP then
+				if math.abs(n_fissure) >= TFIS then
 					nofis = true
 				end
 				
