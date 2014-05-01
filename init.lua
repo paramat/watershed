@@ -1,34 +1,33 @@
--- watershed 0.3.15 by paramat
+-- watershed 0.4.0 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos
 
--- removed 2 unnecessary 3D noises for speed 4-5s per chunk
--- squashed terrain noise
--- flattened lowlands
-
 -- Parameters
 
 local YMIN = -33000 -- Approximate base of realm stone
 local YMAX = 33000 -- Approximate top of atmosphere / mountains / floatlands
-local TERCEN = -160 -- Terrain 'centre', average seabed level
+local TERCEN = -80 -- Terrain 'centre', average seabed level
 local YWAT = 1 -- Sea surface y
 local YSAV = 5 -- Average sandline y, dune grasses above this
 local SAMP = 3 -- Sandline amplitude
 local YCLOMIN = 207 -- Minimum height of mod clouds
 local CLOUDS = true -- Mod clouds?
 
-local TERSCA = 512 -- Vertical terrain scale
+local TERSCA = 256 -- Vertical terrain scale
 local XLSAMP = 0.2 -- Extra large scale height variation amplitude
 local BASAMP = 0.4 -- Base terrain amplitude
-local CANAMP = 0.4 -- Canyon terrain maximum amplitude
+local MIDAMP = 0.2 -- Mid terrain amplitude
+local CANAMP = 0.5 -- Canyon terrain maximum amplitude
 local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 local BLENEXP = 2 -- Terrain blend exponent
 
 local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
-local TRIV = -0.02 -- Maximum densitybase threshold for river water
-local TSAND = -0.025 -- Maximum densitybase threshold for river sand
+local TRIVER = -0.03
+local TRSAND = -0.033
+local TSTREAM = -0.01
+local TSSAND = -0.011
 local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
 local TFIS = 0.01 -- Fissure threshold, controls width
 local ORETHI = 0.002 -- Ore seam thickness tuner
@@ -45,36 +44,24 @@ local BLEND = 0.03 -- Biome blend randomness
 local PINCHA = 36 -- Pine tree 1/x chance per node
 local APTCHA = 36 -- Appletree
 local FLOCHA = 36 -- Flower
-local FOGCHA = 9 -- Forest grass
-local GRACHA = 5 -- Grassland grasses
+local GRACHA = 9 -- Grassland grasses
 local JUTCHA = 16 -- Jungletree
 local JUGCHA = 9 -- Junglegrass
 local CACCHA = 841 -- Cactus
 local DRYCHA = 169 -- Dry shrub
-local PAPCHA = 2 -- Papyrus
+local PAPCHA = 4 -- Papyrus
 local ACACHA = 841 -- Acacia tree
-local GOGCHA = 5 -- Golden grass
-local DUGCHA = 5 -- Dune grass
+local GOGCHA = 9 -- Golden grass
+local DUGCHA = 9 -- Dune grass
 
--- 3D noise for rough terrain
+-- 3D noise for terrain
 
-local np_rough = {
+local np_terrain = {
 	offset = 0,
 	scale = 1,
-	spread = {x=512, y=256, z=512},
+	spread = {x=384, y=192, z=384},
 	seed = 593,
-	octaves = 6,
-	persist = 0.67
-}
-
--- 3D noise for alt rough terrain
-
-local np_roughalt = {
-	offset = 0,
-	scale = 1,
-	spread = {x=414, y=207, z=414},
-	seed = -9003,
-	octaves = 6,
+	octaves = 5,
 	persist = 0.67
 }
 
@@ -130,6 +117,17 @@ local np_strata = {
 	spread = {x=512, y=512, z=512},
 	seed = 92219,
 	octaves = 3,
+	persist = 0.5
+}
+
+-- 2D noise for mid terrain
+
+local np_mid = {
+	offset = 0,
+	scale = 1,
+	spread = {x=768, y=768, z=768},
+	seed = 85546,
+	octaves = 5,
 	persist = 0.5
 }
 
@@ -241,14 +239,14 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local minposxyz = {x=x0, y=y0-1, z=z0} -- 3D and 2D perlinmaps start from these co-ordinates, '-1' for overgeneration
 	local minposxz = {x=x0, y=z0}
 	-- 3D and 2D perlinmaps
-	local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
-	local nvals_roughalt = minetest.get_perlin_map(np_roughalt, chulens):get3dMap_flat(minposxyz)
+	local nvals_terrain = minetest.get_perlin_map(np_terrain, chulens):get3dMap_flat(minposxyz)
 	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
 	local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
 	local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
 	local nvals_seam = minetest.get_perlin_map(np_seam, chulens):get3dMap_flat(minposxyz)
 	local nvals_strata = minetest.get_perlin_map(np_strata, chulens):get3dMap_flat(minposxyz)
 	
+	local nvals_mid = minetest.get_perlin_map(np_mid, chulens):get2dMap_flat(minposxz)
 	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
 	local nvals_magma = minetest.get_perlin_map(np_magma, chulens):get2dMap_flat(minposxz)
@@ -269,27 +267,28 @@ minetest.register_on_generated(function(minp, maxp, seed)
 			for x = x0, x1 do -- for each node do
 				local si = x - x0 + 1 -- stable, under tables index
 				-- noise values for node
-				local n_rough = nvals_rough[nixyz]
-				local n_roughalt = nvals_roughalt[nixyz]
+				local n_terrain = nvals_terrain[nixyz]
 				local n_fissure = nvals_fissure[nixyz]
 				local n_temp = nvals_temp[nixyz]
 				local n_humid = nvals_humid[nixyz]
 				local n_seam = nvals_seam[nixyz]
 				local n_strata = nvals_strata[nixyz]
 				
+				local n_absmid = math.abs(nvals_mid[nixz])
 				local n_base = nvals_base[nixz]
 				local n_xlscale = nvals_xlscale[nixz]
 				local n_magma = nvals_magma[nixz]
 				-- get densitybase and density
 				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
 				local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad
-				local terblen = (math.max(1 - math.abs(n_base), 0)) ^ BLENEXP
-				local canexp = 0.5 + terblen
-				local canamp = 0.01 + terblen * CANAMP
-				local density = densitybase + math.abs((n_rough + n_roughalt) * 0.5) ^ canexp * canamp
+				local densitymid = n_absmid * MIDAMP + densitybase
+				local density = math.abs(n_terrain) * CANAMP * n_absmid + densitymid
 				-- other values
-				local triv = TRIV * (1 - terblen) -- river threshold
-				local tsand = TSAND * (1 - terblen) -- sand threshold
+				local terblen = (math.max(1 - math.abs(n_base), 0)) ^ BLENEXP -- = 1 at ridge
+				local triver = TRIVER * (1 - terblen) -- river threshold
+				local trsand = TRSAND * (1 - terblen) -- sand threshold
+				local tstream = TSTREAM * (1 - n_absmid)
+				local tssand = TSSAND * (1 - n_absmid)
 				local tstone = TSTONE * (1 + grad * 0.5) -- stone threshold
 				local tlava = TLAVA * (1 - n_magma ^ 4 * terblen ^ 16 * 0.5) -- lava threshold
 				local ysand = YSAV + n_fissure * SAMP + math.random() * 2 -- sandline
@@ -374,7 +373,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						under[si] = 0
 					elseif density >= tstone and nofis  -- stone cut by fissures
 					or (density >= tstone and density < TSTONE * 1.5 and y <= YWAT) -- stone around water
-					or (density >= tstone and density < TSTONE * 1.5 and densitybase >= triv ) then -- stone around river
+					or (density >= tstone and density < TSTONE * 1.5 and densitybase >= triver ) then -- stone around river
 						local densitystr = n_strata * 0.25 + (TERCEN - y) / TERSCA
 						local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
 						if (densityper >= 0.05 and densityper <= 0.09) -- sandstone strata
@@ -432,9 +431,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						elseif y <= ysand then -- seabed/beach/dune sand not cut by fissures
 							data[vi] = c_sand
 							under[si] = 10 -- beach/dunes
-						elseif densitybase >= tsand + math.random() * 0.003 then -- river sand not cut by fissures
+						elseif densitybase >= trsand + math.random() * 0.003 then -- river sand
 							data[vi] = c_sand
-							under[si] = 11 -- riverbank
+							under[si] = 11 -- riverbank papyrus
+						elseif densitymid >= tssand + math.random() * 0.003 then -- stream sand
+							data[vi] = c_sand
+							under[si] = 0
 						elseif nofis then -- fine materials cut by fissures
 							if biome == 1 then
 								data[vi] = c_wspermafrost
@@ -477,7 +479,19 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						data[vi] = c_water
 						under[si] = 0
 						stable[si] = 0
-					elseif densitybase >= triv and density < tstone then -- river water not in fissures
+					elseif densitybase >= triver and density < tstone then -- river water not in fissures
+						if n_temp < ICETET then
+							data[vi] = c_wsfreshice
+						else
+							if y == YWAT + 1 then
+								data[vi] = c_wsmixwater
+							else
+								data[vi] = c_wsfreshwater
+							end
+						end
+						stable[si] = 0
+						under[si] = 0
+					elseif densitymid >= tstream and density < tstone then -- stream water not in fissures
 						if n_temp < ICETET then
 							data[vi] = c_wsfreshice
 						else
@@ -541,9 +555,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 									if math.random(FLOCHA) == 2 then
 										data[viu] = c_wsgrass
 										watershed_flower(data, vi, fnoise)
-									elseif math.random(FOGCHA) == 2 then
-										data[viu] = c_wsgrass
-										data[vi] = c_grass5
 									end
 								end
 							elseif under[si] == 7 and n_temp < HITET + 0.1 then
