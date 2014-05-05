@@ -268,8 +268,8 @@ if SINGLENODE then
 		}
 		for chunk = 1, 64 do
 			print ("[watershed] searching for spawn "..chunk)
-			local x0 = 80 * math.random(-24, 24) - 32
-			local z0 = 80 * math.random(-24, 24) - 32
+			local x0 = 80 * math.random(-32, 32) - 32
+			local z0 = 80 * math.random(-32, 32) - 32
 			local y0 = -32
 			local x1 = x0 + 79
 			local z1 = z0 + 79

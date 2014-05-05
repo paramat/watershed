@@ -4,9 +4,8 @@
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos
 
--- less grass and shrubs
--- stone waterseal around streams
--- fog in humid valleys
+-- ore/strata vertical scale of 512
+-- tune params via riverdev
 
 -- Parameters
 
@@ -19,21 +18,22 @@ local SAMP = 3 -- Sandline amplitude
 local YCLOMIN = 207 -- Minimum height of mod clouds
 local CLOUDS = true -- Mod clouds?
 
-local TERSCA = 256 -- Vertical terrain scale
-local XLSAMP = 0.2 -- Extra large scale height variation amplitude
-local BASAMP = 0.4 -- Base terrain amplitude
-local MIDAMP = 0.2 -- Mid terrain amplitude
-local CANAMP = 0.5 -- Canyon terrain maximum amplitude
-local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+local TERSCA = 512 -- Vertical terrain scale
+local XLSAMP = 0.1 -- Extra large scale height variation amplitude
+local BASAMP = 0.3 -- Base terrain amplitude
+local MIDAMP = 0.1 -- Mid terrain amplitude
+local CANAMP = 0.4 -- Canyon terrain maximum amplitude
+local ATANAMP = 1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
 
 local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
-local TRIVER = -0.03
-local TRSAND = -0.033
-local TSTREAM = -0.01
-local TSSAND = -0.011
+local TRIVER = -0.028
+local TRSAND = -0.035
+local TSTREAM = -0.004
+local TSSAND = -0.005
 local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
 local TFIS = 0.01 -- Fissure threshold, controls width
 local TSEAM = 0.1 -- Seam threshold, width of seams
+local ORESCA = 512 -- Seam system vertical scale
 local ORETHI = 0.002 -- Ore seam thickness tuner
 local BERGDEP = 32 -- Maximum iceberg depth
 local TFOG = -0.04 -- Fog top densitymid threshold
@@ -283,18 +283,21 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local n_absbase = math.abs(nvals_base[nixz])
 				local n_xlscale = nvals_xlscale[nixz]
 				local n_magma = nvals_magma[nixz]
-				-- get densitybase and density
+				-- get densities
+				local n_invbase = (1 - n_absbase)
 				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
-				local densitybase = (1 - n_absbase) * BASAMP + n_xlscale * XLSAMP + grad
+				local densitybase = n_invbase * BASAMP + grad + 0.1
 				local densitymid = n_absmid * MIDAMP + densitybase
-				local density = n_absterrain * CANAMP * n_absmid + densitymid
+				local canexp = 0.2 + n_invbase * 0.8
+				local canamp = n_invbase * CANAMP
+				local density = n_absterrain ^ canexp * canamp * n_absmid + densitymid
 				-- other values
 				local terblen = math.max(1 - n_absbase, 0) -- = 1 at ridge
 				local triver = TRIVER * n_absbase -- river threshold
-				local trsand = TRSAND * n_absbase -- sand
-				local tstream = TSTREAM * (1 - n_absmid) -- river sand
+				local trsand = TRSAND * n_absbase -- river sand
+				local tstream = TSTREAM * (1 - n_absmid) -- stream threshold
 				local tssand = TSSAND * (1 - n_absmid) -- stream sand
-				local tstone = TSTONE * (1 + grad * 0.5) -- stone threshold
+				local tstone = TSTONE * (1 + grad) -- stone threshold
 				local tlava = TLAVA * (1 - n_magma ^ 4 * terblen ^ 16 * 0.5) -- lava threshold
 				local ysand = YSAV + n_fissure * SAMP + math.random() * 2 -- sandline
 				local bergdep = math.abs(n_seam) * BERGDEP -- iceberg depth
@@ -380,7 +383,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					or (density >= tstone and density < TSTONE * 1.2 and y <= YWAT) -- stone around water
 					or (density >= tstone and density < TSTONE * 1.2 and densitybase >= triver ) -- stone around river
 					or (density >= tstone and density < TSTONE * 1.2 and densitymid >= tstream ) then -- stone around stream
-						local densitystr = n_strata * 0.25 + (TERCEN - y) / TERSCA
+						local densitystr = n_strata * 0.25 + (TERCEN - y) / ORESCA
 						local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
 						if (densityper >= 0.05 and densityper <= 0.09) -- sandstone strata
 						or (densityper >= 0.25 and densityper <= 0.28)
