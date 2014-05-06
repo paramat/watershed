@@ -224,31 +224,31 @@ if SINGLENODE then
 	-- Spawn player
 
 	function spawnplayer(player)
-		local TERCEN = -160 -- Terrain 'centre', average seabed level
+		local TERCEN = -128 -- Terrain 'centre', average seabed level
 		local TERSCA = 512 -- Vertical terrain scale
-		local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
-		local XLSAMP = 0.2 -- Extra large scale height variation amplitude
-		local BASAMP = 0.4 -- Base terrain amplitude
+		local XLSAMP = 0.1 -- Extra large scale height variation amplitude
+		local BASAMP = 0.3 -- Base terrain amplitude
+		local MIDAMP = 0.1 -- Mid terrain amplitude
 		local CANAMP = 0.4 -- Canyon terrain maximum amplitude
-		local BLENEXP = 2 -- Terrain blend exponent
+		local ATANAMP = 1
 		local xsp
 		local ysp
 		local zsp
-		local np_rough = {
+		local np_terrain = {
 			offset = 0,
 			scale = 1,
-			spread = {x=512, y=256, z=512},
+			spread = {x=384, y=192, z=384},
 			seed = 593,
-			octaves = 6,
+			octaves = 5,
 			persist = 0.67
 		}
-		local np_roughalt = {
+		local np_mid = {
 			offset = 0,
 			scale = 1,
-			spread = {x=414, y=207, z=414},
-			seed = -9003,
-			octaves = 6,
-			persist = 0.67
+			spread = {x=768, y=768, z=768},
+			seed = 85546,
+			octaves = 5,
+			persist = 0.5
 		}
 		local np_base = {
 			offset = 0,
@@ -280,9 +280,8 @@ if SINGLENODE then
 			local minposxyz = {x=x0, y=y0, z=z0}
 			local minposxz = {x=x0, y=z0}
 
-			local nvals_rough = minetest.get_perlin_map(np_rough, chulens):get3dMap_flat(minposxyz)
-			local nvals_roughalt = minetest.get_perlin_map(np_roughalt, chulens):get3dMap_flat(minposxyz)
-
+			local nvals_terrain = minetest.get_perlin_map(np_terrain, chulens):get3dMap_flat(minposxyz)
+			local nvals_mid = minetest.get_perlin_map(np_mid, chulens):get2dMap_flat(minposxz)
 			local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
 			local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
 	
@@ -291,16 +290,17 @@ if SINGLENODE then
 			for z = z0, z1 do
 				for y = y0, y1 do
 					for x = x0, x1 do
-						local n_rough = nvals_rough[nixyz]
-						local n_roughalt = nvals_roughalt[nixyz]
-						local n_base = nvals_base[nixz]
+						local n_absterrain = math.abs(nvals_terrain[nixyz])
+						local n_absmid = math.abs(nvals_mid[nixz])
+						local n_absbase = math.abs(nvals_base[nixz])
 						local n_xlscale = nvals_xlscale[nixz]
+						local n_invbase = (1 - n_absbase)
 						local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
-						local densitybase = (1 - math.abs(n_base)) * BASAMP + n_xlscale * XLSAMP + grad
-						local terblen = (math.max(1 - math.abs(n_base), 0)) ^ BLENEXP
-						local canexp = 0.5 + terblen
-						local canamp = 0.01 + terblen * CANAMP
-						local density = densitybase + math.abs((n_rough + n_roughalt) * 0.5) ^ canexp * canamp
+						local densitybase = n_invbase * BASAMP + grad + 0.1
+						local densitymid = n_absmid * MIDAMP + densitybase
+						local canexp = 0.2 + n_invbase * 0.8
+						local canamp = n_invbase * CANAMP
+						local density = n_absterrain ^ canexp * canamp * n_absmid + densitymid
 						if y >= 1 and density > -0.01 and density < 0 then
 							ysp = y + 1
 							xsp = x
