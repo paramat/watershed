@@ -205,18 +205,8 @@ minetest.register_node("watershed:cloud", {
 	post_effect_color = {a=23, r=241, g=248, b=255},
 })
 
-minetest.register_node("watershed:luxoreoff", {
-	description = "WS Lux Ore Off",
-	tiles = {"watershed_luxore.png"},
-	light_source = 14,
-	is_ground_content = false,
-	groups = {cracky=3},
-	drop = "watershed:luxcrystal 8",
-	sounds = default.node_sound_glass_defaults(),
-})
-
-minetest.register_node("watershed:luxoreon", {
-	description = "WS Lux Ore On",
+minetest.register_node("watershed:luxore", {
+	description = "WS Lux Ore",
 	tiles = {"watershed_luxore.png"},
 	light_source = 14,
 	groups = {cracky=3},

@@ -230,7 +230,8 @@ if SINGLENODE then
 		local BASAMP = 0.3 -- Base terrain amplitude
 		local MIDAMP = 0.1 -- Mid terrain amplitude
 		local CANAMP = 0.4 -- Canyon terrain maximum amplitude
-		local ATANAMP = 1
+		local ATANAMP = 1.1
+		local BLENEXP = 2
 		local xsp
 		local ysp
 		local zsp
@@ -294,13 +295,16 @@ if SINGLENODE then
 						local n_absmid = math.abs(nvals_mid[nixz])
 						local n_absbase = math.abs(nvals_base[nixz])
 						local n_xlscale = nvals_xlscale[nixz]
+						
 						local n_invbase = (1 - n_absbase)
+						local terblen = (math.max(n_invbase, 0)) ^ BLENEXP
 						local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
-						local densitybase = n_invbase * BASAMP + grad + 0.1
+						local densitybase = n_invbase * BASAMP + n_xlscale * XLSAMP + grad
 						local densitymid = n_absmid * MIDAMP + densitybase
-						local canexp = 0.2 + n_invbase * 0.8
-						local canamp = n_invbase * CANAMP
+						local canexp = 0.5 + terblen * 0.5
+						local canamp = terblen * CANAMP
 						local density = n_absterrain ^ canexp * canamp * n_absmid + densitymid
+						
 						if y >= 1 and density > -0.01 and density < 0 then
 							ysp = y + 1
 							xsp = x
@@ -340,19 +344,7 @@ end
 
 -- ABM
 
--- update luxore light
-
-minetest.register_abm({
-	nodenames = {"watershed:luxoreoff"},
-	interval = 13,
-	chance = 1,
-	action = function(pos, node, active_object_count, active_object_count_wider)
-		minetest.remove_node(pos)
-		minetest.place_node(pos, {name="watershed:luxoreon"})
-	end,
-})
-
--- Lava water cooling
+-- Lava-water cooling
 
 minetest.register_abm({
 	nodenames = {"group:lava"},

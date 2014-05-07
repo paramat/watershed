@@ -4,8 +4,10 @@
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos
 
--- ore/strata vertical scale of 512
--- tune params via riverdev
+-- no luxore abm
+-- terblen exponent returns
+-- enable xlscale
+-- grass, flowers return to forest, grassland
 
 -- Parameters
 
@@ -23,13 +25,14 @@ local XLSAMP = 0.1 -- Extra large scale height variation amplitude
 local BASAMP = 0.3 -- Base terrain amplitude
 local MIDAMP = 0.1 -- Mid terrain amplitude
 local CANAMP = 0.4 -- Canyon terrain maximum amplitude
-local ATANAMP = 1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+local BLENEXP = 2 -- Terrain blend exponent
 
 local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
-local TRIVER = -0.028
-local TRSAND = -0.035
-local TSTREAM = -0.004
-local TSSAND = -0.005
+local TRIVER = -0.028 -- Densitybase threshold for river surface
+local TRSAND = -0.035 -- Densitybase threshold for river sand
+local TSTREAM = -0.004 -- Densitymid threshold for stream surface
+local TSSAND = -0.005 -- Densitymid threshold for stream sand
 local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
 local TFIS = 0.01 -- Fissure threshold, controls width
 local TSEAM = 0.1 -- Seam threshold, width of seams
@@ -48,16 +51,16 @@ local BLEND = 0.02 -- Biome blend randomness
 
 local PINCHA = 36 -- Pine tree 1/x chance per node
 local APTCHA = 36 -- Appletree
-local FLOCHA = 121 -- Flower
-local GRACHA = 25 -- Grassland grasses
+local FLOCHA = 289 -- Flower
+local GRACHA = 36 -- Grassland grasses
 local JUTCHA = 16 -- Jungletree
 local JUGCHA = 16 -- Junglegrass
 local CACCHA = 841 -- Cactus
-local DRYCHA = 169 -- Dry shrub
+local DRYCHA = 121 -- Dry shrub
 local ACACHA = 841 -- Acacia tree
 local GOGCHA = 16 -- Golden grass
 local PAPCHA = 4 -- Papyrus
-local DUGCHA = 25 -- Dune grass
+local DUGCHA = 16 -- Dune grass
 
 -- 3D noise for terrain
 
@@ -236,7 +239,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wslava = minetest.get_content_id("watershed:lava")
 	local c_wsfreshice = minetest.get_content_id("watershed:freshice")
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
-	local c_wsluxoreoff = minetest.get_content_id("watershed:luxoreoff")
+	local c_wsluxore = minetest.get_content_id("watershed:luxore")
 	local c_wsicydirt = minetest.get_content_id("watershed:icydirt")
 	-- perlinmap stuff
 	local sidelen = x1 - x0 + 1 -- chunk sidelength
@@ -285,14 +288,14 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local n_magma = nvals_magma[nixz]
 				-- get densities
 				local n_invbase = (1 - n_absbase)
+				local terblen = (math.max(n_invbase, 0)) ^ BLENEXP
 				local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
-				local densitybase = n_invbase * BASAMP + grad + 0.1
+				local densitybase = n_invbase * BASAMP + n_xlscale * XLSAMP + grad
 				local densitymid = n_absmid * MIDAMP + densitybase
-				local canexp = 0.2 + n_invbase * 0.8
-				local canamp = n_invbase * CANAMP
+				local canexp = 0.5 + terblen * 0.5
+				local canamp = terblen * CANAMP
 				local density = n_absterrain ^ canexp * canamp * n_absmid + densitymid
 				-- other values
-				local terblen = math.max(1 - n_absbase, 0) -- = 1 at ridge
 				local triver = TRIVER * n_absbase -- river threshold
 				local trsand = TRSAND * n_absbase -- river sand
 				local tstream = TSTREAM * (1 - n_absmid) -- stream threshold
@@ -407,7 +410,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							elseif densityper >= 0.55 and densityper <= 0.55 + ORETHI * 2 then
 								data[vi] = c_gravel
 							elseif densityper >= 0.1 and densityper <= 0.1 + ORETHI * 2 then
-								data[vi] = c_wsluxoreoff
+								data[vi] = c_wsluxore
 							elseif densityper >= 0.2 and densityper <= 0.2 + ORETHI * 2
 							and math.random(2) == 2 then
 								data[vi] = c_stoiron
@@ -440,10 +443,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						elseif y <= ysand then -- seabed/beach/dune sand not cut by fissures
 							data[vi] = c_sand
 							under[si] = 10 -- beach/dunes
-						elseif densitybase >= trsand + math.random() * 0.003 then -- river sand
+						elseif densitybase >= trsand + math.random() * 0.001 then -- river sand
 							data[vi] = c_sand
 							under[si] = 11 -- riverbank papyrus
-						elseif densitymid >= tssand + math.random() * 0.003 then -- stream sand
+						elseif densitymid >= tssand + math.random() * 0.001 then -- stream sand
 							data[vi] = c_sand
 							under[si] = 0
 						elseif nofis then -- fine materials cut by fissures
@@ -516,6 +519,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						local fnoise = n_fissure -- noise for flower colours
 						if under[si] == 1 then
 							data[viu] = c_wsicydirt
+							if math.random(DRYCHA) == 2 then
+								data[vi] = c_dryshrub
+							end
 						elseif under[si] == 2 then
 							data[viu] = c_dirtsnow
 							data[vi] = c_snowblock
@@ -528,8 +534,16 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							end
 						elseif under[si] == 4 then
 							data[viu] = c_wsdrygrass
+							if math.random(DRYCHA) == 2 then
+								data[vi] = c_dryshrub
+							end
 						elseif under[si] == 5 then
 							data[viu] = c_wsgrass
+							if math.random(FLOCHA) == 2 then
+								watershed_flower(data, vi, fnoise)
+							elseif math.random(GRACHA) == 2 then
+								data[vi] = c_grass5
+							end
 						elseif under[si] == 6 then
 							if math.random(APTCHA) == 2 then
 								watershed_appletree(x, y, z, area, data)
