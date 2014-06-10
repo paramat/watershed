@@ -1,27 +1,41 @@
 minetest.register_node("watershed:appleleaf", {
-	description = "WS Appletree Leaves",
+	description = "Appletree leaves",
 	drawtype = "allfaces_optional",
 	visual_scale = 1.3,
 	tiles = {"default_leaves.png"},
 	paramtype = "light",
 	is_ground_content = false,
 	groups = {snappy=3, flammable=2, leaves=1},
+	drop = {
+		max_items = 1,
+		items = {
+			{items = {"watershed:appling"},rarity = 20},
+			{items = {"watershed:appleleaf"}}
+		}
+	},
 	sounds = default.node_sound_leaves_defaults(),
 })
 
-minetest.register_node("watershed:acacialeaf", {
-	description = "WS Acacia Leaves",
-	drawtype = "allfaces_optional",
-	visual_scale = 1.3,
-	tiles = {"watershed_acacialeaf.png"},
+minetest.register_node("watershed:appling", {
+	description = "Appletree sapling",
+	drawtype = "plantlike",
+	visual_scale = 1.0,
+	tiles = {"default_sapling.png"},
+	inventory_image = "default_sapling.png",
+	wield_image = "default_sapling.png",
 	paramtype = "light",
+	walkable = false,
 	is_ground_content = false,
-	groups = {snappy=3, flammable=2, leaves=1},
+	selection_box = {
+		type = "fixed",
+		fixed = {-0.3, -0.5, -0.3, 0.3, 0.35, 0.3}
+	},
+	groups = {snappy=2,dig_immediate=3,flammable=2,attached_node=1},
 	sounds = default.node_sound_leaves_defaults(),
 })
 
 minetest.register_node("watershed:acaciatree", {
-	description = "WS Acacia Tree",
+	description = "Acacia tree",
 	tiles = {"watershed_acaciatreetop.png", "watershed_acaciatreetop.png", "watershed_acaciatree.png"},
 	paramtype2 = "facedir",
 	is_ground_content = false,
@@ -30,19 +44,44 @@ minetest.register_node("watershed:acaciatree", {
 	on_place = minetest.rotate_node
 })
 
-minetest.register_node("watershed:needles", {
-	description = "WS Pine Needles",
+minetest.register_node("watershed:acacialeaf", {
+	description = "Acacia leaves",
 	drawtype = "allfaces_optional",
 	visual_scale = 1.3,
-	tiles = {"watershed_needles.png"},
+	tiles = {"watershed_acacialeaf.png"},
 	paramtype = "light",
 	is_ground_content = false,
-	groups = {snappy=3},
+	groups = {snappy=3, flammable=2, leaves=1},
+	drop = {
+		max_items = 1,
+		items = {
+			{items = {"watershed:acacialing"},rarity = 20},
+			{items = {"watershed:acacialeaf"}}
+		}
+	},
+	sounds = default.node_sound_leaves_defaults(),
+})
+
+minetest.register_node("watershed:acacialing", {
+	description = "Acacia tree sapling",
+	drawtype = "plantlike",
+	visual_scale = 1.0,
+	tiles = {"watershed_acacialing.png"},
+	inventory_image = "watershed_acacialing.png",
+	wield_image = "watershed_acacialing.png",
+	paramtype = "light",
+	walkable = false,
+	is_ground_content = false,
+	selection_box = {
+		type = "fixed",
+		fixed = {-0.3, -0.5, -0.3, 0.3, 0.35, 0.3}
+	},
+	groups = {snappy=2,dig_immediate=3,flammable=2,attached_node=1},
 	sounds = default.node_sound_leaves_defaults(),
 })
 
 minetest.register_node("watershed:pinetree", {
-	description = "WS Pine Tree",
+	description = "Pine tree",
 	tiles = {"watershed_pinetreetop.png", "watershed_pinetreetop.png", "watershed_pinetree.png"},
 	paramtype2 = "facedir",
 	is_ground_content = false,
@@ -51,19 +90,80 @@ minetest.register_node("watershed:pinetree", {
 	on_place = minetest.rotate_node
 })
 
+minetest.register_node("watershed:needles", {
+	description = "Pine needles",
+	drawtype = "allfaces_optional",
+	visual_scale = 1.3,
+	tiles = {"watershed_needles.png"},
+	paramtype = "light",
+	is_ground_content = false,
+	groups = {snappy=3},
+	drop = {
+		max_items = 1,
+		items = {
+			{items = {"watershed:pineling"},rarity = 20},
+			{items = {"watershed:needles"}}
+		}
+	},
+	sounds = default.node_sound_leaves_defaults(),
+})
+
+minetest.register_node("watershed:pineling", {
+	description = "Pine sapling",
+	drawtype = "plantlike",
+	visual_scale = 1.0,
+	tiles = {"watershed_pineling.png"},
+	inventory_image = "watershed_pineling.png",
+	wield_image = "watershed_pineling.png",
+	paramtype = "light",
+	walkable = false,
+	is_ground_content = false,
+	selection_box = {
+		type = "fixed",
+		fixed = {-0.3, -0.5, -0.3, 0.3, 0.35, 0.3}
+	},
+	groups = {snappy=2,dig_immediate=3,flammable=2,attached_node=1},
+	sounds = default.node_sound_leaves_defaults(),
+})
+
 minetest.register_node("watershed:jungleleaf", {
-	description = "WS Jungletree Leaves",
+	description = "Jungletree leaves",
 	drawtype = "allfaces_optional",
 	visual_scale = 1.3,
 	tiles = {"default_jungleleaves.png"},
 	paramtype = "light",
 	is_ground_content = false,
 	groups = {snappy=3, flammable=2, leaves=1},
+	drop = {
+		max_items = 1,
+		items = {
+			{items = {"watershed:jungling"},rarity = 20},
+			{items = {"watershed:jungleleaf"}}
+		}
+	},
+	sounds = default.node_sound_leaves_defaults(),
+})
+
+minetest.register_node("watershed:jungling", {
+	description = "Jungletree sapling",
+	drawtype = "plantlike",
+	visual_scale = 1.0,
+	tiles = {"watershed_jungling.png"},
+	inventory_image = "watershed_jungling.png",
+	wield_image = "watershed_jungling.png",
+	paramtype = "light",
+	walkable = false,
+	is_ground_content = false,
+	selection_box = {
+		type = "fixed",
+		fixed = {-0.3, -0.5, -0.3, 0.3, 0.35, 0.3}
+	},
+	groups = {snappy=2,dig_immediate=3,flammable=2,attached_node=1},
 	sounds = default.node_sound_leaves_defaults(),
 })
 
 minetest.register_node("watershed:dirt", {
-	description = "WS Dirt",
+	description = "Dirt",
 	tiles = {"default_dirt.png"},
 	is_ground_content = false,
 	groups = {crumbly=3,soil=1},
@@ -72,7 +172,7 @@ minetest.register_node("watershed:dirt", {
 })
 
 minetest.register_node("watershed:icydirt", {
-	description = "WS Icy Dirt",
+	description = "Icy dirt",
 	tiles = {"watershed_icydirt.png"},
 	is_ground_content = false,
 	groups = {crumbly=1},
@@ -84,7 +184,7 @@ minetest.register_node("watershed:icydirt", {
 })
 
 minetest.register_node("watershed:grass", {
-	description = "WS Grass",
+	description = "Grass",
 	tiles = {"default_grass.png", "default_dirt.png", "default_grass.png"},
 	is_ground_content = false,
 	groups = {crumbly=3,soil=1},
@@ -95,7 +195,7 @@ minetest.register_node("watershed:grass", {
 })
 
 minetest.register_node("watershed:redstone", {
-	description = "WS Red Stone",
+	description = "Red stone",
 	tiles = {"default_desert_stone.png"},
 	is_ground_content = false,
 	groups = {cracky=3},
@@ -104,7 +204,7 @@ minetest.register_node("watershed:redstone", {
 })
 
 minetest.register_node("watershed:redcobble", {
-	description = "WS Red Cobblestone",
+	description = "Red cobblestone",
 	tiles = {"watershed_redcobble.png"},
 	is_ground_content = false,
 	groups = {cracky=3, stone=2},
@@ -112,7 +212,7 @@ minetest.register_node("watershed:redcobble", {
 })
 
 minetest.register_node("watershed:stone", {
-	description = "WS Stone",
+	description = "Stone",
 	tiles = {"default_stone.png"},
 	is_ground_content = false,
 	groups = {cracky=3},
@@ -121,7 +221,7 @@ minetest.register_node("watershed:stone", {
 })
 
 minetest.register_node("watershed:cactus", {
-	description = "WS Cactus",
+	description = "Cactus",
 	tiles = {"default_cactus_top.png", "default_cactus_top.png", "default_cactus_side.png"},
 	paramtype2 = "facedir",
 	is_ground_content = false,
@@ -132,7 +232,7 @@ minetest.register_node("watershed:cactus", {
 })
 
 minetest.register_node("watershed:goldengrass", {
-	description = "Golden Grass",
+	description = "Golden grass",
 	drawtype = "plantlike",
 	tiles = {"watershed_goldengrass.png"},
 	inventory_image = "watershed_goldengrass.png",
@@ -150,7 +250,7 @@ minetest.register_node("watershed:goldengrass", {
 })
 
 minetest.register_node("watershed:drygrass", {
-	description = "WS Dry Grass",
+	description = "Dry grass",
 	tiles = {"watershed_drygrass.png"},
 	is_ground_content = false,
 	groups = {crumbly=1,soil=1},
@@ -161,7 +261,7 @@ minetest.register_node("watershed:drygrass", {
 })
 
 minetest.register_node("watershed:permafrost", {
-	description = "WS Permafrost",
+	description = "Permafrost",
 	tiles = {"watershed_permafrost.png"},
 	is_ground_content = false,
 	groups = {crumbly=1},
@@ -170,7 +270,7 @@ minetest.register_node("watershed:permafrost", {
 })
 
 minetest.register_node("watershed:vine", {
-	description = "WS Jungletree Vine",
+	description = "Jungletree vine",
 	drawtype = "airlike",
 	paramtype = "light",
 	walkable = false,
@@ -183,7 +283,7 @@ minetest.register_node("watershed:vine", {
 })
 
 minetest.register_node("watershed:freshice", {
-	description = "WS Fresh Ice",
+	description = "Fresh ice",
 	tiles = {"watershed_freshice.png"},
 	is_ground_content = false,
 	paramtype = "light",
@@ -192,7 +292,7 @@ minetest.register_node("watershed:freshice", {
 })
 
 minetest.register_node("watershed:cloud", {
-	description = "WS Cloud",
+	description = "Cloud",
 	drawtype = "glasslike",
 	tiles = {"watershed_cloud.png"},
 	paramtype = "light",
@@ -206,7 +306,16 @@ minetest.register_node("watershed:cloud", {
 })
 
 minetest.register_node("watershed:luxore", {
-	description = "WS Lux Ore",
+	description = "Lux ore",
+	tiles = {"watershed_luxore.png"},
+	light_source = 14,
+	groups = {cracky=3},
+	drop = "watershed:luxcrystal 8",
+	sounds = default.node_sound_glass_defaults(),
+})
+
+minetest.register_node("watershed:luxoreoff", {
+	description = "Dark lux ore",
 	tiles = {"watershed_luxore.png"},
 	light_source = 14,
 	groups = {cracky=3},
@@ -215,7 +324,7 @@ minetest.register_node("watershed:luxore", {
 })
 
 minetest.register_node("watershed:light", {
-	description = "WS Light",
+	description = "Light",
 	tiles = {"watershed_light.png"},
 	light_source = 14,
 	groups = {cracky=3},
@@ -223,21 +332,23 @@ minetest.register_node("watershed:light", {
 })
 
 minetest.register_node("watershed:acaciawood", {
-	description = "WS Acacia Wood Planks",
+	description = "Acacia wood planks",
 	tiles = {"watershed_acaciawood.png"},
 	groups = {choppy=2,oddly_breakable_by_hand=2,flammable=3,wood=1},
 	sounds = default.node_sound_wood_defaults(),
 })
 
 minetest.register_node("watershed:pinewood", {
-	description = "WS Pine Wood Planks",
+	description = "Pine wood planks",
 	tiles = {"watershed_pinewood.png"},
 	groups = {choppy=2,oddly_breakable_by_hand=2,flammable=3,wood=1},
 	sounds = default.node_sound_wood_defaults(),
 })
 
+
+
 minetest.register_node("watershed:freshwater", {
-	description = "WS Fresh Water Source",
+	description = "Freshwater source",
 	inventory_image = minetest.inventorycube("watershed_freshwater.png"),
 	drawtype = "liquid",
 	tiles = {
@@ -275,7 +386,7 @@ minetest.register_node("watershed:freshwater", {
 })
 
 minetest.register_node("watershed:freshwaterflow", {
-	description = "WS Fresh Flowing Water",
+	description = "Flowing freshwater",
 	inventory_image = minetest.inventorycube("watershed_freshwater.png"),
 	drawtype = "flowingliquid",
 	tiles = {"watershed_freshwater.png"},
@@ -312,7 +423,7 @@ minetest.register_node("watershed:freshwaterflow", {
 })
 
 minetest.register_node("watershed:lava", {
-	description = "WS Lava Source",
+	description = "Lava source",
 	inventory_image = minetest.inventorycube("default_lava.png"),
 	drawtype = "liquid",
 	tiles = {
@@ -347,7 +458,7 @@ minetest.register_node("watershed:lava", {
 })
 
 minetest.register_node("watershed:lavaflow", {
-	description = "WS Flowing Lava",
+	description = "Flowing lava",
 	inventory_image = minetest.inventorycube("default_lava.png"),
 	drawtype = "flowingliquid",
 	tiles = {"default_lava.png"},
@@ -387,7 +498,7 @@ minetest.register_node("watershed:lavaflow", {
 })
 
 minetest.register_node("watershed:mixwater", {
-	description = "WS Mixed Water Source",
+	description = "Mixed water source",
 	inventory_image = minetest.inventorycube("watershed_mixwater.png"),
 	drawtype = "liquid",
 	tiles = {
@@ -425,7 +536,7 @@ minetest.register_node("watershed:mixwater", {
 })
 
 minetest.register_node("watershed:mixwaterflow", {
-	description = "WS Flowing Mixed Water",
+	description = "Flowing mixed water",
 	inventory_image = minetest.inventorycube("watershed_mixwater.png"),
 	drawtype = "flowingliquid",
 	tiles = {"watershed_mixwater.png"},
@@ -464,7 +575,7 @@ minetest.register_node("watershed:mixwaterflow", {
 -- Items
 
 minetest.register_craftitem("watershed:luxcrystal", {
-	description = "WS Lux Crystal",
+	description = "Lux crystal",
 	inventory_image = "watershed_luxcrystal.png",
 })
 

@@ -1,13 +1,12 @@
--- watershed 0.4.0 by paramat
+-- watershed 0.4.1 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- Red cobble texture CC BY-SA by brunob.santos
 
--- no luxore abm
--- terblen exponent returns
--- enable xlscale
--- grass, flowers return to forest, grassland
+-- saplings grown by abm for all 4 trees
+-- nodeupdate(pos) luxore
+-- wider ore seams
 
 -- Parameters
 
@@ -35,7 +34,7 @@ local TSTREAM = -0.004 -- Densitymid threshold for stream surface
 local TSSAND = -0.005 -- Densitymid threshold for stream sand
 local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
 local TFIS = 0.01 -- Fissure threshold, controls width
-local TSEAM = 0.1 -- Seam threshold, width of seams
+local TSEAM = 0.2 -- Seam threshold, width of seams
 local ORESCA = 512 -- Seam system vertical scale
 local ORETHI = 0.002 -- Ore seam thickness tuner
 local BERGDEP = 32 -- Maximum iceberg depth
@@ -55,10 +54,10 @@ local FLOCHA = 289 -- Flower
 local GRACHA = 36 -- Grassland grasses
 local JUTCHA = 16 -- Jungletree
 local JUGCHA = 16 -- Junglegrass
-local CACCHA = 841 -- Cactus
+local CACCHA = 2209 -- Cactus
 local DRYCHA = 121 -- Dry shrub
-local ACACHA = 841 -- Acacia tree
-local GOGCHA = 16 -- Golden grass
+local ACACHA = 1369 -- Acacia tree
+local GOGCHA = 9 -- Golden grass
 local PAPCHA = 4 -- Papyrus
 local DUGCHA = 16 -- Dune grass
 
@@ -239,7 +238,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local c_wslava = minetest.get_content_id("watershed:lava")
 	local c_wsfreshice = minetest.get_content_id("watershed:freshice")
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
-	local c_wsluxore = minetest.get_content_id("watershed:luxore")
+	local c_wsluxore = minetest.get_content_id("watershed:luxoreoff")
 	local c_wsicydirt = minetest.get_content_id("watershed:icydirt")
 	-- perlinmap stuff
 	local sidelen = x1 - x0 + 1 -- chunk sidelength

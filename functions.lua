@@ -356,3 +356,107 @@ minetest.register_abm({
 		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
 	end,
 })
+
+-- Update luxore light
+
+minetest.register_abm({
+	nodenames = {"watershed:luxoreoff"},
+	interval = 5,
+	chance = 8,
+	action = function(pos, node)
+		minetest.add_node(pos, {name="watershed:luxore"})
+		nodeupdate(pos)
+	end,
+})
+
+-- Appletree sapling
+
+minetest.register_abm({
+	nodenames = {"watershed:appling"},
+	interval = 57,
+	chance = 3,
+	action = function(pos, node)
+		local x = pos.x
+		local y = pos.y
+		local z = pos.z
+		local vm = minetest.get_voxel_manip()
+		local pos1 = {x=x-2, y=y-2, z=z-2}
+		local pos2 = {x=x+2, y=y+4, z=z+2}
+		local emin, emax = vm:read_from_map(pos1, pos2)
+		local area = VoxelArea:new({MinEdge=emin, MaxEdge=emax})
+		local data = vm:get_data()
+		watershed_appletree(x, y, z, area, data)
+		vm:set_data(data)
+		vm:write_to_map()
+		vm:update_map()
+	end,
+})
+
+-- Pine sapling
+
+minetest.register_abm({
+	nodenames = {"watershed:pineling"},
+	interval = 59,
+	chance = 3,
+	action = function(pos, node)
+		local x = pos.x
+		local y = pos.y
+		local z = pos.z
+		local vm = minetest.get_voxel_manip()
+		local pos1 = {x=x-2, y=y-4, z=z-2}
+		local pos2 = {x=x+2, y=y+17, z=z+2}
+		local emin, emax = vm:read_from_map(pos1, pos2)
+		local area = VoxelArea:new({MinEdge=emin, MaxEdge=emax})
+		local data = vm:get_data()
+		watershed_pinetree(x, y, z, area, data)
+		vm:set_data(data)
+		vm:write_to_map()
+		vm:update_map()
+	end,
+})
+
+-- Acacia sapling
+
+minetest.register_abm({
+	nodenames = {"watershed:acacialing"},
+	interval = 61,
+	chance = 3,
+	action = function(pos, node)
+		local x = pos.x
+		local y = pos.y
+		local z = pos.z
+		local vm = minetest.get_voxel_manip()
+		local pos1 = {x=x-4, y=y-3, z=z-4}
+		local pos2 = {x=x+4, y=y+6, z=z+4}
+		local emin, emax = vm:read_from_map(pos1, pos2)
+		local area = VoxelArea:new({MinEdge=emin, MaxEdge=emax})
+		local data = vm:get_data()
+		watershed_acaciatree(x, y, z, area, data)
+		vm:set_data(data)
+		vm:write_to_map()
+		vm:update_map()
+	end,
+})
+
+-- Jungletree sapling
+
+minetest.register_abm({
+	nodenames = {"watershed:jungling"},
+	interval = 63,
+	chance = 3,
+	action = function(pos, node)
+		local x = pos.x
+		local y = pos.y
+		local z = pos.z
+		local vm = minetest.get_voxel_manip()
+		local pos1 = {x=x-2, y=y-5, z=z-2}
+		local pos2 = {x=x+2, y=y+23, z=z+2}
+		local emin, emax = vm:read_from_map(pos1, pos2)
+		local area = VoxelArea:new({MinEdge=emin, MaxEdge=emax})
+		local data = vm:get_data()
+		watershed_jungletree(x, y, z, area, data)
+		vm:set_data(data)
+		vm:write_to_map()
+		vm:update_map()
+	end,
+})
