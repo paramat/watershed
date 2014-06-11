@@ -2,11 +2,8 @@
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
--- Red cobble texture CC BY-SA by brunob.santos
-
--- saplings grown by abm for all 4 trees
--- nodeupdate(pos) luxore
--- wider ore seams
+-- watershed:redcobble texture CC BY-SA by brunob.santos
+-- watershed:pineling texture CC BY-SA by Splizard
 
 -- Parameters
 
