@@ -1,9 +1,11 @@
--- watershed 0.4.1 by paramat
+-- watershed 0.4.2 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- watershed:redcobble texture CC BY-SA by brunob.santos
 -- watershed:pineling texture CC BY-SA by Splizard
+
+-- acaciawood, pinewood stairs and slabs
 
 -- Parameters
 

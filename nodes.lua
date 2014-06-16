@@ -636,3 +636,19 @@ minetest.register_craft({
 	burntime = 60,
 	replacements = {{"watershed:bucket_lava", "bucket:bucket_empty"}},
 })
+
+-- Register stairs and slabs
+
+stairs.register_stair_and_slab("acaciawood", "watershed:acaciawood",
+		{snappy=2,choppy=2,oddly_breakable_by_hand=2,flammable=3},
+		{"watershed_acaciawood.png"},
+		"Acaciawood stair",
+		"Acaciawood slab",
+		default.node_sound_wood_defaults())
+
+stairs.register_stair_and_slab("pinewood", "watershed:pinewood",
+		{snappy=2,choppy=2,oddly_breakable_by_hand=2,flammable=3},
+		{"watershed_pinewood.png"},
+		"Pinewood stair",
+		"Pinewood slab",
+		default.node_sound_wood_defaults())
