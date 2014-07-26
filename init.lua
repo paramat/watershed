@@ -1,11 +1,12 @@
--- watershed 0.4.2 by paramat
+-- watershed 0.4.3 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 -- watershed:redcobble texture CC BY-SA by brunob.santos
 -- watershed:pineling texture CC BY-SA by Splizard
 
--- acaciawood, pinewood stairs and slabs
+-- use LVM for 'ungen' check, scanning chunk below, faster mapgen
+-- 80 becomes sidelen, works with any chunk size
 
 -- Parameters
 
@@ -199,6 +200,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local data = vm:get_data() -- get flat array of voxelarea content ids
 	-- content ids
 	local c_air = minetest.get_content_id("air")
+	local c_ignore = minetest.get_content_id("ignore")
 	local c_water = minetest.get_content_id("default:water_source")
 	local c_sand = minetest.get_content_id("default:sand")
 	local c_desand = minetest.get_content_id("default:desert_sand")
@@ -242,7 +244,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	-- perlinmap stuff
 	local sidelen = x1 - x0 + 1 -- chunk sidelength
 	local chulens = {x=sidelen, y=sidelen+2, z=sidelen} -- chunk dimensions, '+2' for overgeneration
-	local minposxyz = {x=x0, y=y0-1, z=z0} -- 3D and 2D perlinmaps start from these co-ordinates, '-1' for overgeneration
+	local minposxyz = {x=x0, y=y0-1, z=z0}
 	local minposxz = {x=x0, y=z0}
 	-- 3D and 2D perlinmaps
 	local nvals_terrain = minetest.get_perlin_map(np_terrain, chulens):get3dMap_flat(minposxyz)
@@ -257,10 +259,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
 	local nvals_magma = minetest.get_perlin_map(np_magma, chulens):get2dMap_flat(minposxz)
 	
-	local ungen = false -- ungenerated chunk below?
-	if minetest.get_node({x=x0, y=y0-1, z=z0}).name == "ignore" then
-		ungen = true
-	end
+	local viu = area:index(x0, y0-1, z0) -- ungenerated chunk below?
+	local ungen = data[viu] == c_ignore
+
 	-- mapgen loop
 	local nixyz = 1 -- 3D and 2D perlinmap indexes
 	local nixz = 1
@@ -345,24 +346,24 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							stable[si] = 0
 						end
 					else -- scan top layer of chunk below
-						local nodename = minetest.get_node({x=x,y=y,z=z}).name
-						if nodename == "watershed:stone"
-						or nodename == "watershed:redstone"
-						or nodename == "watershed:dirt"
-						or nodename == "watershed:permafrost"
-						or nodename == "watershed:luxoreoff"
-						or nodename == "default:sand"
-						or nodename == "default:desert_sand"
-						or nodename == "default:mese"
-						or nodename == "default:stone_with_diamond"
-						or nodename == "default:stone_with_gold"
-						or nodename == "default:stone_with_copper"
-						or nodename == "default:stone_with_iron"
-						or nodename == "default:stone_with_coal"
-						or nodename == "default:sandstone"
-						or nodename == "default:gravel"
-						or nodename == "default:clay"
-						or nodename == "default:obsidian" then
+						local nodid = data[vi]
+						if nodid == c_wsstone
+						or nodid == c_wsredstone
+						or nodid == c_wsdirt
+						or nodid == c_wspermafrost
+						or nodid == c_wsluxore
+						or nodid == c_sand
+						or nodid == c_desand
+						or nodid == c_mese
+						or nodid == c_stodiam
+						or nodid == c_stogold
+						or nodid == c_stocopp
+						or nodid == c_stoiron
+						or nodid == c_stocoal
+						or nodid == c_sandstone
+						or nodid == c_gravel
+						or nodid == c_clay
+						or nodid == c_obsidian then
 							stable[si] = 2
 						else
 							stable[si] = 0
@@ -638,9 +639,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				vi = vi + 1
 				viu = viu + 1
 			end
-			nixz = nixz - 80
+			nixz = nixz - sidelen
 		end
-		nixz = nixz + 80
+		nixz = nixz + sidelen
 	end
 	-- voxelmanip stuff
 	vm:set_data(data)
