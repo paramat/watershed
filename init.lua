@@ -1,12 +1,14 @@
--- watershed 0.4.3 by paramat
+-- watershed 0.5.0 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
--- watershed:redcobble texture CC BY-SA by brunob.santos
--- watershed:pineling texture CC BY-SA by Splizard
 
--- use LVM for 'ungen' check, scanning chunk below, faster mapgen
--- 80 becomes sidelen, works with any chunk size
+-- New in 0.5.0:
+-- add 'update_liquids()' to make rivers flow
+-- liquid range 2
+-- double biome size
+-- more volcanos, 1 per kn on ridge
+-- regeneration by chat command '/regen'
 
 -- Parameters
 
@@ -32,7 +34,7 @@ local TRIVER = -0.028 -- Densitybase threshold for river surface
 local TRSAND = -0.035 -- Densitybase threshold for river sand
 local TSTREAM = -0.004 -- Densitymid threshold for stream surface
 local TSSAND = -0.005 -- Densitymid threshold for stream sand
-local TLAVA = 2.3 -- Maximum densitybase threshold for lava, small because grad is non-linear
+local TLAVA = 2 -- Maximum densitybase threshold for lava, small because grad is non-linear
 local TFIS = 0.01 -- Fissure threshold, controls width
 local TSEAM = 0.2 -- Seam threshold, width of seams
 local ORESCA = 512 -- Seam system vertical scale
@@ -88,7 +90,7 @@ local np_fissure = {
 local np_temp = {
 	offset = 0,
 	scale = 1,
-	spread = {x=512, y=512, z=512},
+	spread = {x=1024, y=1024, z=1024},
 	seed = 9130,
 	octaves = 3,
 	persist = 0.5
@@ -99,7 +101,7 @@ local np_temp = {
 local np_humid = {
 	offset = 0,
 	scale = 1,
-	spread = {x=512, y=512, z=512},
+	spread = {x=1024, y=1024, z=1024},
 	seed = -55500,
 	octaves = 3,
 	persist = 0.5
@@ -173,32 +175,12 @@ local np_magma = {
 
 -- Stuff
 
-watershed = {}
-
 dofile(minetest.get_modpath("watershed").."/nodes.lua")
 dofile(minetest.get_modpath("watershed").."/functions.lua")
 
--- On generated function
+-- Mapchunk generation function
 
-minetest.register_on_generated(function(minp, maxp, seed)
-	if minp.y < YMIN or maxp.y > YMAX then
-		return
-	end
-
-	local t1 = os.clock()
-	local x1 = maxp.x
-	local y1 = maxp.y
-	local z1 = maxp.z
-	local x0 = minp.x
-	local y0 = minp.y
-	local z0 = minp.z
-	
-	print ("[watershed] chunk minp ("..x0.." "..y0.." "..z0..")")
-	-- voxelmanip stuff
-	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip") -- min, max points for emerged area/voxelarea
-	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax} -- voxelarea helper for indexes
-	local data = vm:get_data() -- get flat array of voxelarea content ids
-	-- content ids
+function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 	local c_air = minetest.get_content_id("air")
 	local c_ignore = minetest.get_content_id("ignore")
 	local c_water = minetest.get_content_id("default:water_source")
@@ -300,7 +282,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local tstream = TSTREAM * (1 - n_absmid) -- stream threshold
 				local tssand = TSSAND * (1 - n_absmid) -- stream sand
 				local tstone = TSTONE * (1 + grad) -- stone threshold
-				local tlava = TLAVA * (1 - n_magma ^ 4 * terblen ^ 16 * 0.5) -- lava threshold
+				local tlava = TLAVA * (1 - n_magma ^ 4 * terblen ^ 16 * 0.6) -- lava threshold
 				local ysand = YSAV + n_fissure * SAMP + math.random() * 2 -- sandline
 				local bergdep = math.abs(n_seam) * BERGDEP -- iceberg depth
 				
@@ -643,12 +625,83 @@ minetest.register_on_generated(function(minp, maxp, seed)
 		end
 		nixz = nixz + sidelen
 	end
-	-- voxelmanip stuff
+end
+
+-- Regenerate chunk by chat command. Dependant on chunksize = 5.
+
+minetest.register_chatcommand("regen",{
+	description = "Regenerate player's current mapchunk",
+	privs = {privs = server, rollback},
+	func = function(name, params)
+		local t1 = os.clock()
+
+		local player = minetest.get_player_by_name(name)
+		local pos = player:getpos()
+		local plax = math.floor(pos.x + 0.5)
+		local play = math.floor(pos.y + 0.5)
+		local plaz = math.floor(pos.z + 0.5)
+		local x0 = (80 * math.floor((plax + 32) / 80)) - 32
+		local y0 = (80 * math.floor((play + 32) / 80)) - 32
+		local z0 = (80 * math.floor((plaz + 32) / 80)) - 32
+		local x1 = x0 + 79
+		local y1 = y0 + 79
+		local z1 = z0 + 79
+
+		if y0 < YMIN or y1 > YMAX then
+			return
+		end
+
+		print ("[watershed] regenerate mapchunk")
+
+		local vm = minetest.get_voxel_manip()
+		local pos1 = {x = x0, y = y0 - 1, z = z0}
+		local pos2 = {x = x1, y = y1 + 1, z = z1}
+		local emin, emax = vm:read_from_map(pos1, pos2)
+		local area = VoxelArea:new({MinEdge=emin, MaxEdge=emax})
+		local data = vm:get_data()
+
+		watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)	
+
+		vm:set_data(data)
+		vm:write_to_map()
+		vm:update_map()
+
+		local chugent = math.ceil((os.clock() - t1) * 1000)
+		print ("[watershed] "..chugent.." ms")
+	end
+})
+
+-- On generated function
+
+minetest.register_on_generated(function(minp, maxp, seed)
+	if minp.y < YMIN or maxp.y > YMAX then
+		return
+	end
+
+	local t1 = os.clock()
+
+	local x1 = maxp.x
+	local y1 = maxp.y
+	local z1 = maxp.z
+	local x0 = minp.x
+	local y0 = minp.y
+	local z0 = minp.z
+	
+	print ("[watershed] generate mapchunk minp ("..x0.." "..y0.." "..z0..")")
+
+	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
+	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
+	local data = vm:get_data()
+
+	watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
+
 	vm:set_data(data)
 	vm:set_lighting({day=0, night=0})
 	vm:calc_lighting()
 	vm:write_to_map(data)
+	vm:update_liquids()
 	
-	local chugent = math.ceil((os.clock() - t1) * 1000) -- chunk generation time
+	local chugent = math.ceil((os.clock() - t1) * 1000)
 	print ("[watershed] "..chugent.." ms")
 end)
+

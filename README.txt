@@ -1,6 +1,4 @@
-watershed 0.4.3 by paramat
+watershed 0.5.0 by paramat
 For latest stable Minetest back to 0.4.8
-Depends default bucket
+Depends default stairs
 Licenses: code WTFPL, textures CC BY-SA
-watershed:redcobble texture CC BY-SA by brunob.santos
-watershed:pineling texture CC BY-SA by Splizard

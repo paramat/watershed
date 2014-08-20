@@ -380,7 +380,7 @@ minetest.register_node("watershed:freshwater", {
 	liquid_alternative_source = "watershed:freshwater",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 4,
+	liquid_range = 2,
 	post_effect_color = {a=64, r=100, g=150, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1},
 })
@@ -417,7 +417,7 @@ minetest.register_node("watershed:freshwaterflow", {
 	liquid_alternative_source = "watershed:freshwater",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 4,
+	liquid_range = 2,
 	post_effect_color = {a=64, r=100, g=150, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1, not_in_creative_inventory=1},
 })
@@ -530,7 +530,7 @@ minetest.register_node("watershed:mixwater", {
 	liquid_alternative_source = "watershed:mixwater",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 4,
+	liquid_range = 2,
 	post_effect_color = {a=64, r=100, g=120, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1},
 })
@@ -567,7 +567,7 @@ minetest.register_node("watershed:mixwaterflow", {
 	liquid_alternative_source = "watershed:mixwater",
 	liquid_viscosity = WATER_VISC,
 	liquid_renewable = false,
-	liquid_range = 4,
+	liquid_range = 2,
 	post_effect_color = {a=64, r=100, g=120, b=200},
 	groups = {water=3, liquid=3, puts_out_fire=1, not_in_creative_inventory=1},
 })
