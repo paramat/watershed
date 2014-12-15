@@ -1,14 +1,10 @@
--- watershed 0.5.0 by paramat
+-- watershed 0.6.0 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 
--- New in 0.5.0:
--- add 'update_liquids()' to make rivers flow
--- liquid range 2
--- double biome size
--- more volcanos, 1 per kn on ridge
--- regeneration by chat command '/regen'
+-- New in 0.6.0:
+
 
 -- Parameters
 
@@ -62,6 +58,8 @@ local ACACHA = 1369 -- Acacia tree
 local GOGCHA = 9 -- Golden grass
 local PAPCHA = 4 -- Papyrus
 local DUGCHA = 16 -- Dune grass
+
+-- 3D noises
 
 -- 3D noise for terrain
 
@@ -129,12 +127,14 @@ local np_strata = {
 	persist = 0.5
 }
 
+-- 2D noises
+
 -- 2D noise for mid terrain / streambed height
 
 local np_mid = {
 	offset = 0,
 	scale = 1,
-	spread = {x=768, y=768, z=768},
+	spread = {x=768, y=768, z=1},
 	seed = 85546,
 	octaves = 5,
 	persist = 0.5
@@ -145,7 +145,7 @@ local np_mid = {
 local np_base = {
 	offset = 0,
 	scale = 1,
-	spread = {x=4096, y=4096, z=4096},
+	spread = {x=4096, y=4096, z=1},
 	seed = 8890,
 	octaves = 3,
 	persist = 0.33
@@ -156,7 +156,7 @@ local np_base = {
 local np_xlscale = {
 	offset = 0,
 	scale = 1,
-	spread = {x=8192, y=8192, z=8192},
+	spread = {x=8192, y=8192, z=1},
 	seed = -72,
 	octaves = 3,
 	persist = 0.33
@@ -167,16 +167,31 @@ local np_xlscale = {
 local np_magma = {
 	offset = 0,
 	scale = 1,
-	spread = {x=128, y=128, z=128},
+	spread = {x=128, y=128, z=1},
 	seed = -13,
 	octaves = 2,
 	persist = 0.5
 }
 
+
 -- Stuff
+
+-- initialize 3D and 2D noise objects to nil
+local nobj_terrain = nil
+local nobj_fissure = nil
+local nobj_temp    = nil
+local nobj_humid   = nil
+local nobj_seam    = nil
+local nobj_strata  = nil
+	
+local nobj_mid     = nil
+local nobj_base    = nil
+local nobj_xlscale = nil
+local nobj_magma   = nil
 
 dofile(minetest.get_modpath("watershed").."/nodes.lua")
 dofile(minetest.get_modpath("watershed").."/functions.lua")
+
 
 -- Mapchunk generation function
 
@@ -225,23 +240,36 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 	local c_wsicydirt = minetest.get_content_id("watershed:icydirt")
 	-- perlinmap stuff
 	local sidelen = x1 - x0 + 1 -- chunk sidelength
-	local chulens = {x=sidelen, y=sidelen+2, z=sidelen} -- chunk dimensions, '+2' for overgeneration
+	local chulensxyz = {x=sidelen, y=sidelen+2, z=sidelen} -- chunk dimensions, '+2' for overgeneration
+	local chulensxz = {x=sidelen, y=sidelen, z=1} -- here x = map x, y = map z
 	local minposxyz = {x=x0, y=y0-1, z=z0}
-	local minposxz = {x=x0, y=z0}
-	-- 3D and 2D perlinmaps
-	local nvals_terrain = minetest.get_perlin_map(np_terrain, chulens):get3dMap_flat(minposxyz)
-	local nvals_fissure = minetest.get_perlin_map(np_fissure, chulens):get3dMap_flat(minposxyz)
-	local nvals_temp = minetest.get_perlin_map(np_temp, chulens):get3dMap_flat(minposxyz)
-	local nvals_humid = minetest.get_perlin_map(np_humid, chulens):get3dMap_flat(minposxyz)
-	local nvals_seam = minetest.get_perlin_map(np_seam, chulens):get3dMap_flat(minposxyz)
-	local nvals_strata = minetest.get_perlin_map(np_strata, chulens):get3dMap_flat(minposxyz)
+	local minposxz = {x=x0, y=z0} -- here x = map x, y = map z
+	-- 3D and 2D noise objects created once on first mapchunk generation only
+	nobj_terrain = nobj_terrain or minetest.get_perlin_map(np_terrain, chulensxyz)
+	nobj_fissure = nobj_fissure or minetest.get_perlin_map(np_fissure, chulensxyz)
+	nobj_temp    = nobj_temp    or minetest.get_perlin_map(np_temp, chulensxyz)
+	nobj_humid   = nobj_humid   or minetest.get_perlin_map(np_humid, chulensxyz)
+	nobj_seam    = nobj_seam    or minetest.get_perlin_map(np_seam, chulensxyz)
+	nobj_strata  = nobj_strata  or minetest.get_perlin_map(np_strata, chulensxyz)
 	
-	local nvals_mid = minetest.get_perlin_map(np_mid, chulens):get2dMap_flat(minposxz)
-	local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
-	local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
-	local nvals_magma = minetest.get_perlin_map(np_magma, chulens):get2dMap_flat(minposxz)
+	nobj_mid     = nobj_mid     or minetest.get_perlin_map(np_mid, chulensxz)
+	nobj_base    = nobj_base    or minetest.get_perlin_map(np_base, chulensxz)
+	nobj_xlscale = nobj_xlscale or minetest.get_perlin_map(np_xlscale, chulensxz)
+	nobj_magma   = nobj_magma   or minetest.get_perlin_map(np_magma, chulensxz)
+	-- 3D and 2D perlinmaps created per mapchunk
+	local nvals_terrain = nobj_terrain:get3dMap_flat(minposxyz)
+	local nvals_fissure = nobj_fissure:get3dMap_flat(minposxyz)
+	local nvals_temp    = nobj_temp:get3dMap_flat(minposxyz)
+	local nvals_humid   = nobj_humid:get3dMap_flat(minposxyz)
+	local nvals_seam    = nobj_seam:get3dMap_flat(minposxyz)
+	local nvals_strata  = nobj_strata:get3dMap_flat(minposxyz)
 	
-	local viu = area:index(x0, y0-1, z0) -- ungenerated chunk below?
+	local nvals_mid     = nobj_mid:get2dMap_flat(minposxz)
+	local nvals_base    = nobj_base:get2dMap_flat(minposxz)
+	local nvals_xlscale = nobj_xlscale:get2dMap_flat(minposxz)
+	local nvals_magma   = nobj_magma:get2dMap_flat(minposxz)
+	-- ungenerated chunk below?
+	local viu = area:index(x0, y0-1, z0)
 	local ungen = data[viu] == c_ignore
 
 	-- mapgen loop
@@ -359,7 +387,8 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif densitybase >= tlava - math.min(0.6 + density * 6, 0.6) and density < tstone then -- obsidian
+					elseif densitybase >= tlava - math.min(0.6 + density * 6, 0.6)
+					and density < tstone then -- obsidian
 						data[vi] = c_obsidian
 						stable[si] = 1
 						under[si] = 0
@@ -463,8 +492,9 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 							stable[si] = 0
 							under[si] = 0
 						end
-					elseif y >= YWAT - bergdep and y <= YWAT + bergdep / 8 and n_temp < ICETET -- icesheet
-					and density < tstone and math.abs(n_fissure) > 0.01 then
+					elseif y >= YWAT - bergdep and y <= YWAT + bergdep / 8 -- icesheet
+					and n_temp < ICETET and density < tstone
+					and math.abs(n_fissure) > 0.01 then
 						data[vi] = c_ice
 						under[si] = 12
 						stable[si] = 0
@@ -627,6 +657,7 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 	end
 end
 
+
 -- Regenerate chunk by chat command. Dependant on chunksize = 5.
 
 minetest.register_chatcommand("regen",{
@@ -670,6 +701,7 @@ minetest.register_chatcommand("regen",{
 		print ("[watershed] "..chugent.." ms")
 	end
 })
+
 
 -- On generated function
 
