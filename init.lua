@@ -1,9 +1,11 @@
--- watershed 0.6.0 by paramat
+-- watershed 0.6.1 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
 
--- New in 0.6.0:
+-- fix 'over 60 upvalues'
+-- TODO
+-- correct noise code in spawnplayer function
 
 
 -- Parameters
@@ -46,18 +48,20 @@ local LOHUT = -0.35 -- Low ..
 local FOGHUT = 1.0 -- Fog ..
 local BLEND = 0.02 -- Biome blend randomness
 
-local PINCHA = 36 -- Pine tree 1/x chance per node
-local APTCHA = 36 -- Appletree
-local FLOCHA = 289 -- Flower
-local GRACHA = 36 -- Grassland grasses
-local JUTCHA = 16 -- Jungletree
-local JUGCHA = 16 -- Junglegrass
-local CACCHA = 2209 -- Cactus
-local DRYCHA = 121 -- Dry shrub
-local ACACHA = 1369 -- Acacia tree
-local GOGCHA = 9 -- Golden grass
-local PAPCHA = 4 -- Papyrus
-local DUGCHA = 16 -- Dune grass
+local flora = {
+	PINCHA = 36, -- Pine tree 1/x chance per node
+	APTCHA = 36, -- Appletree
+	FLOCHA = 289, -- Flower
+	GRACHA = 36, -- Grassland grasses
+	JUTCHA = 16, -- Jungletree
+	JUGCHA = 16, -- Junglegrass
+	CACCHA = 2209, -- Cactus
+	DRYCHA = 121, -- Dry shrub
+	ACACHA = 1369, -- Acacia tree
+	GOGCHA = 9, -- Golden grass
+	PAPCHA = 4, -- Papyrus
+	DUGCHA = 16, -- Dune grass
+}
 
 -- 3D noises
 
@@ -530,14 +534,14 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 						local fnoise = n_fissure -- noise for flower colours
 						if under[si] == 1 then
 							data[viu] = c_wsicydirt
-							if math.random(DRYCHA) == 2 then
+							if math.random(flora.DRYCHA) == 2 then
 								data[vi] = c_dryshrub
 							end
 						elseif under[si] == 2 then
 							data[viu] = c_dirtsnow
 							data[vi] = c_snowblock
 						elseif under[si] == 3 then
-							if math.random(PINCHA) == 2 then
+							if math.random(flora.PINCHA) == 2 then
 								watershed_pinetree(x, y, z, area, data)
 							else
 								data[viu] = c_dirtsnow
@@ -545,58 +549,58 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 							end
 						elseif under[si] == 4 then
 							data[viu] = c_wsdrygrass
-							if math.random(DRYCHA) == 2 then
+							if math.random(flora.DRYCHA) == 2 then
 								data[vi] = c_dryshrub
 							end
 						elseif under[si] == 5 then
 							data[viu] = c_wsgrass
-							if math.random(FLOCHA) == 2 then
+							if math.random(flora.FLOCHA) == 2 then
 								watershed_flower(data, vi, fnoise)
-							elseif math.random(GRACHA) == 2 then
+							elseif math.random(flora.GRACHA) == 2 then
 								data[vi] = c_grass5
 							end
 						elseif under[si] == 6 then
-							if math.random(APTCHA) == 2 then
+							if math.random(flora.APTCHA) == 2 then
 								watershed_appletree(x, y, z, area, data)
 							else
 								data[viu] = c_wsgrass
-								if math.random(FLOCHA) == 2 then
+								if math.random(flora.FLOCHA) == 2 then
 									watershed_flower(data, vi, fnoise)
-								elseif math.random(GRACHA) == 2 then
+								elseif math.random(flora.GRACHA) == 2 then
 									data[vi] = c_grass5
 								end
 							end
 						elseif under[si] == 7 and n_temp < HITET + 0.1 then
-							if math.random(CACCHA) == 2 then
+							if math.random(flora.CACCHA) == 2 then
 								watershed_cactus(x, y, z, area, data)
-							elseif math.random(DRYCHA) == 2 then
+							elseif math.random(flora.DRYCHA) == 2 then
 								data[vi] = c_dryshrub
 							end
 						elseif under[si] == 8 then
-							if math.random(ACACHA) == 2 then
+							if math.random(flora.ACACHA) == 2 then
 								watershed_acaciatree(x, y, z, area, data)
 							else
 								data[viu] = c_wsdrygrass
-								if math.random(GOGCHA) == 2 then
+								if math.random(flora.GOGCHA) == 2 then
 									data[vi] = c_wsgoldengrass
 								end
 							end
 						elseif under[si] == 9 then
-							if math.random(JUTCHA) == 2 then
+							if math.random(flora.JUTCHA) == 2 then
 								watershed_jungletree(x, y, z, area, data)
 							else
 								data[viu] = c_wsgrass
-								if math.random(JUGCHA) == 2 then
+								if math.random(flora.JUGCHA) == 2 then
 									data[vi] = c_jungrass
 								end
 							end
 						elseif under[si] == 10 then -- dunes
-							if math.random(DUGCHA) == 2 and y > YSAV 
+							if math.random(flora.DUGCHA) == 2 and y > YSAV 
 							and biome >= 4 then
 								data[vi] = c_wsgoldengrass
 							end
 						elseif under[si] == 11 and n_temp > HITET then -- hot biome riverbank
-							if math.random(PAPCHA) == 2 then
+							if math.random(flora.PAPCHA) == 2 then
 								watershed_papyrus(x, y, z, area, data)
 							end
 						elseif under[si] == 12
