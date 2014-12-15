@@ -221,20 +221,21 @@ if SINGLENODE then
 		minetest.set_mapgen_params({mgname="singlenode"})
 	end)
 
-	-- Spawn player
+	-- Spawn player function. Requires chunksize = 80 nodes (the default)
 
 	function spawnplayer(player)
-		local TERCEN = -128 -- Terrain 'centre', average seabed level
-		local TERSCA = 512 -- Vertical terrain scale
-		local XLSAMP = 0.1 -- Extra large scale height variation amplitude
-		local BASAMP = 0.3 -- Base terrain amplitude
-		local MIDAMP = 0.1 -- Mid terrain amplitude
-		local CANAMP = 0.4 -- Canyon terrain maximum amplitude
+		local TERCEN = -128
+		local TERSCA = 512
+		local XLSAMP = 0.1
+		local BASAMP = 0.3
+		local MIDAMP = 0.1
+		local CANAMP = 0.4
 		local ATANAMP = 1.1
 		local BLENEXP = 2
 		local xsp
 		local ysp
 		local zsp
+
 		local np_terrain = {
 			offset = 0,
 			scale = 1,
@@ -246,7 +247,7 @@ if SINGLENODE then
 		local np_mid = {
 			offset = 0,
 			scale = 1,
-			spread = {x=768, y=768, z=768},
+			spread = {x=768, y=768, z=1},
 			seed = 85546,
 			octaves = 5,
 			persist = 0.5
@@ -254,7 +255,7 @@ if SINGLENODE then
 		local np_base = {
 			offset = 0,
 			scale = 1,
-			spread = {x=4096, y=4096, z=4096},
+			spread = {x=4096, y=4096, z=1},
 			seed = 8890,
 			octaves = 3,
 			persist = 0.33
@@ -262,11 +263,17 @@ if SINGLENODE then
 		local np_xlscale = {
 			offset = 0,
 			scale = 1,
-			spread = {x=8192, y=8192, z=8192},
+			spread = {x=8192, y=8192, z=1},
 			seed = -72,
 			octaves = 3,
 			persist = 0.33
 		}
+
+		local nobj_terrain = nil
+		local nobj_mid     = nil
+		local nobj_base    = nil
+		local nobj_xlscale = nil
+
 		for chunk = 1, 64 do
 			print ("[watershed] searching for spawn "..chunk)
 			local x0 = 80 * math.random(-32, 32) - 32
@@ -275,17 +282,22 @@ if SINGLENODE then
 			local x1 = x0 + 79
 			local z1 = z0 + 79
 			local y1 = 47
-	
 			local sidelen = 80
-			local chulens = {x=sidelen, y=sidelen, z=sidelen}
-			local minposxyz = {x=x0, y=y0, z=z0}
+			local chulensxyz = {x=sidelen, y=sidelen+2, z=sidelen}
+			local chulensxz = {x=sidelen, y=sidelen, z=1}
+			local minposxyz = {x=x0, y=y0-1, z=z0}
 			local minposxz = {x=x0, y=z0}
 
-			local nvals_terrain = minetest.get_perlin_map(np_terrain, chulens):get3dMap_flat(minposxyz)
-			local nvals_mid = minetest.get_perlin_map(np_mid, chulens):get2dMap_flat(minposxz)
-			local nvals_base = minetest.get_perlin_map(np_base, chulens):get2dMap_flat(minposxz)
-			local nvals_xlscale = minetest.get_perlin_map(np_xlscale, chulens):get2dMap_flat(minposxz)
-	
+			nobj_terrain = nobj_terrain or minetest.get_perlin_map(np_terrain, chulensxyz)
+			nobj_mid     = nobj_mid     or minetest.get_perlin_map(np_mid, chulensxz)
+			nobj_base    = nobj_base    or minetest.get_perlin_map(np_base, chulensxz)
+			nobj_xlscale = nobj_xlscale or minetest.get_perlin_map(np_xlscale, chulensxz)
+
+			local nvals_terrain = nobj_terrain:get3dMap_flat(minposxyz)
+			local nvals_mid     = nobj_mid:get2dMap_flat(minposxz)
+			local nvals_base    = nobj_base:get2dMap_flat(minposxz)
+			local nvals_xlscale = nobj_xlscale:get2dMap_flat(minposxz)
+
 			local nixz = 1
 			local nixyz = 1
 			for z = z0, z1 do
@@ -305,7 +317,7 @@ if SINGLENODE then
 						local canamp = terblen * CANAMP
 						local density = n_absterrain ^ canexp * canamp * n_absmid + densitymid
 						
-						if y >= 1 and density > -0.01 and density < 0 then
+						if y >= 1 and density > -0.005 and density < 0 then
 							ysp = y + 1
 							xsp = x
 							zsp = z

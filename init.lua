@@ -1,11 +1,7 @@
--- watershed 0.6.1 by paramat
+-- watershed 0.6.2 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default bucket
 -- License: code WTFPL, textures CC BY-SA
-
--- fix 'over 60 upvalues'
--- TODO
--- correct noise code in spawnplayer function
 
 
 -- Parameters
