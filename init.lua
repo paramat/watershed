@@ -1,6 +1,6 @@
--- watershed 0.6.2 by paramat
+-- watershed 0.6.3 by paramat
 -- For latest stable Minetest and back to 0.4.8
--- Depends default bucket
+-- Depends default stairs bucket
 -- License: code WTFPL, textures CC BY-SA
 
 
@@ -134,7 +134,7 @@ local np_strata = {
 local np_mid = {
 	offset = 0,
 	scale = 1,
-	spread = {x=768, y=768, z=1},
+	spread = {x=768, y=768, z=768},
 	seed = 85546,
 	octaves = 5,
 	persist = 0.5
@@ -145,7 +145,7 @@ local np_mid = {
 local np_base = {
 	offset = 0,
 	scale = 1,
-	spread = {x=4096, y=4096, z=1},
+	spread = {x=4096, y=4096, z=4096},
 	seed = 8890,
 	octaves = 3,
 	persist = 0.33
@@ -156,7 +156,7 @@ local np_base = {
 local np_xlscale = {
 	offset = 0,
 	scale = 1,
-	spread = {x=8192, y=8192, z=1},
+	spread = {x=8192, y=8192, z=8192},
 	seed = -72,
 	octaves = 3,
 	persist = 0.33
@@ -167,7 +167,7 @@ local np_xlscale = {
 local np_magma = {
 	offset = 0,
 	scale = 1,
-	spread = {x=128, y=128, z=1},
+	spread = {x=128, y=128, z=128},
 	seed = -13,
 	octaves = 2,
 	persist = 0.5
