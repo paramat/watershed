@@ -1,4 +1,4 @@
--- watershed 0.6.3 by paramat
+-- watershed 0.6.4 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default stairs bucket
 -- License: code WTFPL, textures CC BY-SA
@@ -662,7 +662,7 @@ end
 
 minetest.register_chatcommand("regen",{
 	description = "Regenerate player's current mapchunk",
-	privs = {privs = server, rollback},
+	privs = {server = true, rollback = true},
 	func = function(name, params)
 		local t1 = os.clock()
 
