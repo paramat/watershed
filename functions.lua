@@ -218,7 +218,7 @@ if SINGLENODE then
 	-- Set mapgen parameters
 
 	minetest.register_on_mapgen_init(function(mgparams)
-		minetest.set_mapgen_params({mgname="singlenode"})
+		minetest.set_mapgen_params({mgname="singlenode", flags="nolight"})
 	end)
 
 	-- Spawn player function. Requires chunksize = 80 nodes (the default)
@@ -366,18 +366,6 @@ minetest.register_abm({
 	action = function(pos, node, active_object_count, active_object_count_wider)
 		minetest.add_node(pos, {name="default:obsidian"})
 		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
-	end,
-})
-
--- Update luxore light
-
-minetest.register_abm({
-	nodenames = {"watershed:luxoreoff"},
-	interval = 5,
-	chance = 8,
-	action = function(pos, node)
-		minetest.add_node(pos, {name="watershed:luxore"})
-		nodeupdate(pos)
 	end,
 })
 

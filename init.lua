@@ -1,8 +1,10 @@
--- watershed 0.6.4 by paramat
+-- watershed 0.7.0 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default stairs bucket
 -- License: code WTFPL, textures CC BY-SA
 
+-- flags="nolight" replaces set_lighting
+-- add paramtype = "light" to light sources. remove dummy luxore and light spread ABM
 
 -- Parameters
 
@@ -177,6 +179,7 @@ local np_magma = {
 -- Stuff
 
 -- initialize 3D and 2D noise objects to nil
+
 local nobj_terrain = nil
 local nobj_fissure = nil
 local nobj_temp    = nil
@@ -236,12 +239,12 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 	local c_wslava = minetest.get_content_id("watershed:lava")
 	local c_wsfreshice = minetest.get_content_id("watershed:freshice")
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
-	local c_wsluxore = minetest.get_content_id("watershed:luxoreoff")
+	local c_wsluxore = minetest.get_content_id("watershed:luxore")
 	local c_wsicydirt = minetest.get_content_id("watershed:icydirt")
 	-- perlinmap stuff
 	local sidelen = x1 - x0 + 1 -- chunk sidelength
 	local chulensxyz = {x=sidelen, y=sidelen+2, z=sidelen} -- chunk dimensions, '+2' for overgeneration
-	local chulensxz = {x=sidelen, y=sidelen, z=1} -- here x = map x, y = map z
+	local chulensxz = {x=sidelen, y=sidelen} -- here x = map x, y = map z
 	local minposxyz = {x=x0, y=y0-1, z=z0}
 	local minposxz = {x=x0, y=z0} -- here x = map x, y = map z
 	-- 3D and 2D noise objects created once on first mapchunk generation only
@@ -728,7 +731,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 
 	vm:set_data(data)
-	vm:set_lighting({day=0, night=0})
 	vm:calc_lighting()
 	vm:write_to_map(data)
 	vm:update_liquids()

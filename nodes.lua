@@ -308,15 +308,7 @@ minetest.register_node("watershed:cloud", {
 minetest.register_node("watershed:luxore", {
 	description = "Lux ore",
 	tiles = {"watershed_luxore.png"},
-	light_source = 14,
-	groups = {cracky=3},
-	drop = "watershed:luxcrystal 8",
-	sounds = default.node_sound_glass_defaults(),
-})
-
-minetest.register_node("watershed:luxoreoff", {
-	description = "Dark lux ore",
-	tiles = {"watershed_luxore.png"},
+	paramtype = "light",
 	light_source = 14,
 	groups = {cracky=3},
 	drop = "watershed:luxcrystal 8",
@@ -326,6 +318,7 @@ minetest.register_node("watershed:luxoreoff", {
 minetest.register_node("watershed:light", {
 	description = "Light",
 	tiles = {"watershed_light.png"},
+	paramtype = "light",
 	light_source = 14,
 	groups = {cracky=3},
 	sounds = default.node_sound_glass_defaults(),
