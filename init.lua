@@ -1,10 +1,9 @@
--- watershed 0.7.0 by paramat
+-- watershed 0.6.6 by paramat
 -- For latest stable Minetest and back to 0.4.8
 -- Depends default stairs bucket
 -- License: code WTFPL, textures CC BY-SA
 
--- flags="nolight" replaces set_lighting
--- add paramtype = "light" to light sources. remove dummy luxore and light spread ABM
+-- re-add z=1 for z component of 2D noisemap size to fix crashes
 
 -- Parameters
 
@@ -244,7 +243,7 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 	-- perlinmap stuff
 	local sidelen = x1 - x0 + 1 -- chunk sidelength
 	local chulensxyz = {x=sidelen, y=sidelen+2, z=sidelen} -- chunk dimensions, '+2' for overgeneration
-	local chulensxz = {x=sidelen, y=sidelen} -- here x = map x, y = map z
+	local chulensxz = {x=sidelen, y=sidelen, z=1} -- here x = map x, y = map z
 	local minposxyz = {x=x0, y=y0-1, z=z0}
 	local minposxz = {x=x0, y=z0} -- here x = map x, y = map z
 	-- 3D and 2D noise objects created once on first mapchunk generation only
