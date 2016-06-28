@@ -1,10 +1,3 @@
--- watershed 0.6.6 by paramat
--- For latest stable Minetest and back to 0.4.8
--- Depends default stairs bucket
--- License: code WTFPL, textures CC BY-SA
-
--- re-add z=1 for z component of 2D noisemap size to fix crashes
-
 -- Parameters
 
 local YMIN = -33000 -- Approximate base of realm stone
@@ -21,7 +14,8 @@ local XLSAMP = 0.1 -- Extra large scale height variation amplitude
 local BASAMP = 0.3 -- Base terrain amplitude
 local MIDAMP = 0.1 -- Mid terrain amplitude
 local CANAMP = 0.4 -- Canyon terrain maximum amplitude
-local ATANAMP = 1.1 -- Arctan function amplitude, smaller = more and larger floatlands above ridges
+local ATANAMP = 1.1 -- Arctan function amplitude,
+					-- smaller = more and larger floatlands above ridges
 local BLENEXP = 2 -- Terrain blend exponent
 
 local TSTONE = 0.02 -- Density threshold for stone, depth of soil at TERCEN
@@ -29,7 +23,8 @@ local TRIVER = -0.028 -- Densitybase threshold for river surface
 local TRSAND = -0.035 -- Densitybase threshold for river sand
 local TSTREAM = -0.004 -- Densitymid threshold for stream surface
 local TSSAND = -0.005 -- Densitymid threshold for stream sand
-local TLAVA = 2 -- Maximum densitybase threshold for lava, small because grad is non-linear
+local TLAVA = 2 -- Maximum densitybase threshold for lava,
+				-- small because grad is non-linear
 local TFIS = 0.01 -- Fissure threshold, controls width
 local TSEAM = 0.2 -- Seam threshold, width of seams
 local ORESCA = 512 -- Seam system vertical scale
@@ -37,13 +32,15 @@ local ORETHI = 0.002 -- Ore seam thickness tuner
 local BERGDEP = 32 -- Maximum iceberg depth
 local TFOG = -0.04 -- Fog top densitymid threshold
 
-local HITET = 0.35 -- High temperature threshold
-local LOTET = -0.35 -- Low ..
-local ICETET = -0.7 -- Ice ..
-local HIHUT = 0.35 -- High humidity threshold
-local LOHUT = -0.35 -- Low ..
-local FOGHUT = 1.0 -- Fog ..
-local BLEND = 0.02 -- Biome blend randomness
+local biomeparams = {
+	HITET = 0.35, -- High temperature threshold
+	LOTET = -0.35, -- Low ..
+	ICETET = -0.7, -- Ice ..
+	HIHUT = 0.35, -- High humidity threshold
+	LOHUT = -0.35, -- Low ..
+	FOGHUT = 1.0, -- Fog ..
+	BLEND = 0.02, -- Biome blend randomness
+}
 
 local flora = {
 	PINCHA = 36, -- Pine tree 1/x chance per node
@@ -67,7 +64,7 @@ local flora = {
 local np_terrain = {
 	offset = 0,
 	scale = 1,
-	spread = {x=384, y=192, z=384},
+	spread = {x = 384, y = 192, z = 384},
 	seed = 593,
 	octaves = 5,
 	persist = 0.67
@@ -78,7 +75,7 @@ local np_terrain = {
 local np_fissure = {
 	offset = 0,
 	scale = 1,
-	spread = {x=256, y=512, z=256},
+	spread = {x = 256, y = 512, z = 256},
 	seed = 20099,
 	octaves = 5,
 	persist = 0.5
@@ -89,7 +86,7 @@ local np_fissure = {
 local np_temp = {
 	offset = 0,
 	scale = 1,
-	spread = {x=1024, y=1024, z=1024},
+	spread = {x = 1024, y = 1024, z = 1024},
 	seed = 9130,
 	octaves = 3,
 	persist = 0.5
@@ -100,7 +97,7 @@ local np_temp = {
 local np_humid = {
 	offset = 0,
 	scale = 1,
-	spread = {x=1024, y=1024, z=1024},
+	spread = {x = 1024, y = 1024, z = 1024},
 	seed = -55500,
 	octaves = 3,
 	persist = 0.5
@@ -111,7 +108,7 @@ local np_humid = {
 local np_seam = {
 	offset = 0,
 	scale = 1,
-	spread = {x=512, y=512, z=512},
+	spread = {x = 512, y = 512, z = 512},
 	seed = -992221,
 	octaves = 2,
 	persist = 0.5
@@ -122,7 +119,7 @@ local np_seam = {
 local np_strata = {
 	offset = 0,
 	scale = 1,
-	spread = {x=512, y=512, z=512},
+	spread = {x = 512, y = 512, z = 512},
 	seed = 92219,
 	octaves = 3,
 	persist = 0.5
@@ -135,7 +132,7 @@ local np_strata = {
 local np_mid = {
 	offset = 0,
 	scale = 1,
-	spread = {x=768, y=768, z=768},
+	spread = {x = 768, y = 768, z = 768},
 	seed = 85546,
 	octaves = 5,
 	persist = 0.5
@@ -146,7 +143,7 @@ local np_mid = {
 local np_base = {
 	offset = 0,
 	scale = 1,
-	spread = {x=4096, y=4096, z=4096},
+	spread = {x = 4096, y = 4096, z = 4096},
 	seed = 8890,
 	octaves = 3,
 	persist = 0.33
@@ -157,7 +154,7 @@ local np_base = {
 local np_xlscale = {
 	offset = 0,
 	scale = 1,
-	spread = {x=8192, y=8192, z=8192},
+	spread = {x = 8192, y = 8192, z = 8192},
 	seed = -72,
 	octaves = 3,
 	persist = 0.33
@@ -168,16 +165,19 @@ local np_xlscale = {
 local np_magma = {
 	offset = 0,
 	scale = 1,
-	spread = {x=128, y=128, z=128},
+	spread = {x = 128, y = 128, z = 128},
 	seed = -13,
 	octaves = 2,
 	persist = 0.5
 }
 
 
--- Stuff
+-- Do files
 
--- initialize 3D and 2D noise objects to nil
+dofile(minetest.get_modpath("watershed") .. "/nodes.lua")
+dofile(minetest.get_modpath("watershed") .. "/functions.lua")
+
+-- Initialize 3D and 2D noise objects to nil
 
 local nobj_terrain = nil
 local nobj_fissure = nil
@@ -191,8 +191,20 @@ local nobj_base    = nil
 local nobj_xlscale = nil
 local nobj_magma   = nil
 
-dofile(minetest.get_modpath("watershed").."/nodes.lua")
-dofile(minetest.get_modpath("watershed").."/functions.lua")
+
+-- Localise noise buffers
+
+local nbuf_terrain
+local nbuf_fissure
+local nbuf_temp
+local nbuf_humid
+local nbuf_seam
+local nbuf_strata
+	
+local nbuf_mid
+local nbuf_base
+local nbuf_xlscale
+local nbuf_magma
 
 
 -- Mapchunk generation function
@@ -240,12 +252,14 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 	local c_wscloud = minetest.get_content_id("watershed:cloud")
 	local c_wsluxore = minetest.get_content_id("watershed:luxore")
 	local c_wsicydirt = minetest.get_content_id("watershed:icydirt")
+
 	-- perlinmap stuff
-	local sidelen = x1 - x0 + 1 -- chunk sidelength
-	local chulensxyz = {x=sidelen, y=sidelen+2, z=sidelen} -- chunk dimensions, '+2' for overgeneration
-	local chulensxz = {x=sidelen, y=sidelen, z=1} -- here x = map x, y = map z
-	local minposxyz = {x=x0, y=y0-1, z=z0}
-	local minposxz = {x=x0, y=z0} -- here x = map x, y = map z
+	local sidelen = x1 - x0 + 1
+	local chulensxyz = {x = sidelen, y = sidelen + 2, z = sidelen}
+	local chulensxz = {x = sidelen, y = sidelen, z = 1}
+	local minposxyz = {x = x0, y = y0 - 1, z = z0}
+	local minposxz = {x = x0, y = z0}
+
 	-- 3D and 2D noise objects created once on first mapchunk generation only
 	nobj_terrain = nobj_terrain or minetest.get_perlin_map(np_terrain, chulensxyz)
 	nobj_fissure = nobj_fissure or minetest.get_perlin_map(np_fissure, chulensxyz)
@@ -258,32 +272,36 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 	nobj_base    = nobj_base    or minetest.get_perlin_map(np_base, chulensxz)
 	nobj_xlscale = nobj_xlscale or minetest.get_perlin_map(np_xlscale, chulensxz)
 	nobj_magma   = nobj_magma   or minetest.get_perlin_map(np_magma, chulensxz)
+
 	-- 3D and 2D perlinmaps created per mapchunk
-	local nvals_terrain = nobj_terrain:get3dMap_flat(minposxyz)
-	local nvals_fissure = nobj_fissure:get3dMap_flat(minposxyz)
-	local nvals_temp    = nobj_temp:get3dMap_flat(minposxyz)
-	local nvals_humid   = nobj_humid:get3dMap_flat(minposxyz)
-	local nvals_seam    = nobj_seam:get3dMap_flat(minposxyz)
-	local nvals_strata  = nobj_strata:get3dMap_flat(minposxyz)
+	local nvals_terrain = nobj_terrain:get3dMap_flat(minposxyz, nbuf_terrain)
+	local nvals_fissure = nobj_fissure:get3dMap_flat(minposxyz, nbuf_fissure)
+	local nvals_temp    = nobj_temp   :get3dMap_flat(minposxyz, nbuf_temp)
+	local nvals_humid   = nobj_humid  :get3dMap_flat(minposxyz, nbuf_humid)
+	local nvals_seam    = nobj_seam   :get3dMap_flat(minposxyz, nbuf_seam)
+	local nvals_strata  = nobj_strata :get3dMap_flat(minposxyz, nbuf_strata)
 	
-	local nvals_mid     = nobj_mid:get2dMap_flat(minposxz)
-	local nvals_base    = nobj_base:get2dMap_flat(minposxz)
-	local nvals_xlscale = nobj_xlscale:get2dMap_flat(minposxz)
-	local nvals_magma   = nobj_magma:get2dMap_flat(minposxz)
+	local nvals_mid     = nobj_mid    :get2dMap_flat(minposxz, nbuf_mid)
+	local nvals_base    = nobj_base   :get2dMap_flat(minposxz, nbuf_base)
+	local nvals_xlscale = nobj_xlscale:get2dMap_flat(minposxz, nbuf_xlscale)
+	local nvals_magma   = nobj_magma  :get2dMap_flat(minposxz, nbuf_magma)
+
 	-- ungenerated chunk below?
-	local viu = area:index(x0, y0-1, z0)
+	local viu = area:index(x0, y0 - 1, z0)
 	local ungen = data[viu] == c_ignore
 
 	-- mapgen loop
 	local nixyz = 1 -- 3D and 2D perlinmap indexes
 	local nixz = 1
-	local stable = {} -- stability table of true/false. is node supported from below by 2 stone or nodes on 2 stone?
-	local under = {} -- biome table. biome number of previous fine material placed in column
-	for z = z0, z1 do -- for each xy plane progressing northwards
-		for y = y0 - 1, y1 + 1 do -- for each x row progressing upwards
-			local vi = area:index(x0, y, z) -- voxelmanip index for first node in this x row
-			local viu = area:index(x0, y-1, z) -- index for under node
-			for x = x0, x1 do -- for each node do
+	local stable = {} -- stability table of true/false.
+					-- is node supported from below by 2 stone or nodes on 2 stone?
+	local under = {} -- biome table.
+					-- biome number of previous fine material placed in column
+	for z = z0, z1 do
+		for y = y0 - 1, y1 + 1 do
+			local vi = area:index(x0, y, z)
+			local viu = area:index(x0, y - 1, z)
+			for x = x0, x1 do
 				local si = x - x0 + 1 -- stable, under tables index
 				-- noise values for node
 				local n_absterrain = math.abs(nvals_terrain[nixyz])
@@ -322,26 +340,32 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 				end
 				
 				local biome = false -- select biome for node
-				if n_temp < LOTET + (math.random() - 0.5) * BLEND then
-					if n_humid < LOHUT + (math.random() - 0.5) * BLEND then
+				if n_temp < biomeparams.LOTET +
+						(math.random() - 0.5) * biomeparams.BLEND then
+					if n_humid < biomeparams.LOHUT +
+							(math.random() - 0.5) * biomeparams.BLEND then
 						biome = 1 -- tundra
-					elseif n_humid > HIHUT + (math.random() - 0.5) * BLEND then
+					elseif n_humid > biomeparams.HIHUT +
+							(math.random() - 0.5) * biomeparams.BLEND then
 						biome = 3 -- taiga
 					else
 						biome = 2 -- snowy plains
 					end
-				elseif n_temp > HITET + (math.random() - 0.5) * BLEND then
-					if n_humid < LOHUT + (math.random() - 0.5) * BLEND then
+				elseif n_temp > biomeparams.HITET +
+						(math.random() - 0.5) * biomeparams.BLEND then
+					if n_humid < biomeparams.LOHUT +
+							(math.random() - 0.5) * biomeparams.BLEND then
 						biome = 7 -- desert
-					elseif n_humid > HIHUT + (math.random() - 0.5) * BLEND then
+					elseif n_humid > biomeparams.HIHUT +
+							(math.random() - 0.5) * biomeparams.BLEND then
 						biome = 9 -- rainforest
 					else
 						biome = 8 -- savanna
 					end
 				else
-					if n_humid < LOHUT then
+					if n_humid < biomeparams.LOHUT then
 						biome = 4 -- dry grassland
-					elseif n_humid > HIHUT then
+					elseif n_humid > biomeparams.HIHUT then
 						biome = 6 -- deciduous forest
 					else
 						biome = 5 -- grassland
@@ -360,22 +384,22 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 					else -- scan top layer of chunk below
 						local nodid = data[vi]
 						if nodid == c_wsstone
-						or nodid == c_wsredstone
-						or nodid == c_wsdirt
-						or nodid == c_wspermafrost
-						or nodid == c_wsluxore
-						or nodid == c_sand
-						or nodid == c_desand
-						or nodid == c_mese
-						or nodid == c_stodiam
-						or nodid == c_stogold
-						or nodid == c_stocopp
-						or nodid == c_stoiron
-						or nodid == c_stocoal
-						or nodid == c_sandstone
-						or nodid == c_gravel
-						or nodid == c_clay
-						or nodid == c_obsidian then
+								or nodid == c_wsredstone
+								or nodid == c_wsdirt
+								or nodid == c_wspermafrost
+								or nodid == c_wsluxore
+								or nodid == c_sand
+								or nodid == c_desand
+								or nodid == c_mese
+								or nodid == c_stodiam
+								or nodid == c_stogold
+								or nodid == c_stocopp
+								or nodid == c_stoiron
+								or nodid == c_stocoal
+								or nodid == c_sandstone
+								or nodid == c_gravel
+								or nodid == c_clay
+								or nodid == c_obsidian then
 							stable[si] = 2
 						else
 							stable[si] = 0
@@ -390,56 +414,74 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 						stable[si] = 0
 						under[si] = 0
 					elseif densitybase >= tlava - math.min(0.6 + density * 6, 0.6)
-					and density < tstone then -- obsidian
+							and density < tstone then -- obsidian
 						data[vi] = c_obsidian
 						stable[si] = 1
 						under[si] = 0
 					elseif density >= tstone and nofis  -- stone cut by fissures
-					or (density >= tstone and density < TSTONE * 1.2 and y <= YWAT) -- stone around water
-					or (density >= tstone and density < TSTONE * 1.2 and densitybase >= triver ) -- stone around river
-					or (density >= tstone and density < TSTONE * 1.2 and densitymid >= tstream ) then -- stone around stream
+							or (density >= tstone and density < TSTONE * 1.2 and
+							y <= YWAT) -- stone around water
+							or (density >= tstone and density < TSTONE * 1.2 and
+							densitybase >= triver ) -- stone around river
+							or (density >= tstone and density < TSTONE * 1.2 and
+							densitymid >= tstream ) then -- stone around stream
 						local densitystr = n_strata * 0.25 + (TERCEN - y) / ORESCA
-						local densityper = densitystr - math.floor(densitystr) -- periodic strata 'density'
+						-- periodic strata 'density'
+						local densityper = densitystr - math.floor(densitystr)
 						if (densityper >= 0.05 and densityper <= 0.09) -- sandstone strata
-						or (densityper >= 0.25 and densityper <= 0.28)
-						or (densityper >= 0.45 and densityper <= 0.47)
-						or (densityper >= 0.74 and densityper <= 0.76)
-						or (densityper >= 0.77 and densityper <= 0.79)
-						or (densityper >= 0.84 and densityper <= 0.87)
-						or (densityper >= 0.95 and densityper <= 0.98) then
+								or (densityper >= 0.25 and densityper <= 0.28)
+								or (densityper >= 0.45 and densityper <= 0.47)
+								or (densityper >= 0.74 and densityper <= 0.76)
+								or (densityper >= 0.77 and densityper <= 0.79)
+								or (densityper >= 0.84 and densityper <= 0.87)
+								or (densityper >= 0.95 and densityper <= 0.98) then
 							data[vi] = c_sandstone
-						elseif biome == 7 and density < TSTONE * 3 then -- desert stone as surface layer
+						elseif biome == 7 and density < TSTONE * 3 then
+							-- desert stone as surface layer
 							data[vi] = c_wsredstone
 						elseif math.abs(n_seam) < TSEAM then
-							if densityper >= 0 and densityper <= ORETHI * 4 then -- ore seams
+							-- ore seams
+							if densityper >= 0 and
+									densityper <= ORETHI * 4 then
 								data[vi] = c_stocoal
-							elseif densityper >= 0.3 and densityper <= 0.3 + ORETHI * 4 then
+							elseif densityper >= 0.3 and
+									densityper <= 0.3 + ORETHI * 4 then
 								data[vi] = c_stocoal
-							elseif densityper >= 0.5 and densityper <= 0.5 + ORETHI * 4 then
+							elseif densityper >= 0.5 and
+									densityper <= 0.5 + ORETHI * 4 then
 								data[vi] = c_stocoal
-							elseif densityper >= 0.8 and densityper <= 0.8 + ORETHI * 4 then
+							elseif densityper >= 0.8 and
+									densityper <= 0.8 + ORETHI * 4 then
 								data[vi] = c_stocoal
-							elseif densityper >= 0.55 and densityper <= 0.55 + ORETHI * 2 then
+							elseif densityper >= 0.55 and
+									densityper <= 0.55 + ORETHI * 2 then
 								data[vi] = c_gravel
-							elseif densityper >= 0.1 and densityper <= 0.1 + ORETHI * 2 then
+							elseif densityper >= 0.1 and
+									densityper <= 0.1 + ORETHI * 2 then
 								data[vi] = c_wsluxore
-							elseif densityper >= 0.2 and densityper <= 0.2 + ORETHI * 2
-							and math.random(2) == 2 then
+							elseif densityper >= 0.2 and
+									densityper <= 0.2 + ORETHI * 2 and
+									math.random(2) == 2 then
 								data[vi] = c_stoiron
-							elseif densityper >= 0.65 and densityper <= 0.65 + ORETHI * 2
-							and math.random(2) == 2 then
+							elseif densityper >= 0.65 and
+									densityper <= 0.65 + ORETHI * 2 and
+									math.random(2) == 2 then
 								data[vi] = c_stoiron
-							elseif densityper >= 0.4 and densityper <= 0.4 + ORETHI * 2
-							and math.random(3) == 2 then
+							elseif densityper >= 0.4 and
+									densityper <= 0.4 + ORETHI * 2 and
+									math.random(3) == 2 then
 								data[vi] = c_stocopp
-							elseif densityper >= 0.6 and densityper <= 0.6 + ORETHI
-							and math.random(5) == 2 then
+							elseif densityper >= 0.6 and
+									densityper <= 0.6 + ORETHI and
+									math.random(5) == 2 then
 								data[vi] = c_stogold
-							elseif densityper >= 0.7 and densityper <= 0.7 + ORETHI
-							and math.random(7) == 2 then
+							elseif densityper >= 0.7 and
+									densityper <= 0.7 + ORETHI and
+									math.random(7) == 2 then
 								data[vi] = c_mese
-							elseif densityper >= 0.9 and densityper <= 0.9 + ORETHI
-							and math.random(11) == 2 then
+							elseif densityper >= 0.9 and
+									densityper <= 0.9 + ORETHI and
+									math.random(11) == 2 then
 								data[vi] = c_stodiam
 							else
 								data[vi] = c_wsstone
@@ -449,7 +491,8 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 						end
 						stable[si] = stable[si] + 1
 						under[si] = 0
-					elseif density >= 0 and density < tstone and stable[si] >= 2 then -- fine materials
+					-- fine materials
+					elseif density >= 0 and density < tstone and stable[si] >= 2 then
 						if y == YWAT - 2 and math.abs(n_temp) < 0.05 then -- clay
 							data[vi] = c_clay
 						elseif y <= ysand then -- seabed/beach/dune sand not cut by fissures
@@ -495,8 +538,8 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 							under[si] = 0
 						end
 					elseif y >= YWAT - bergdep and y <= YWAT + bergdep / 8 -- icesheet
-					and n_temp < ICETET and density < tstone
-					and math.abs(n_fissure) > 0.01 then
+							and n_temp < biomeparams.ICETET and density < tstone
+							and math.abs(n_fissure) > 0.01 then
 						data[vi] = c_ice
 						under[si] = 12
 						stable[si] = 0
@@ -504,8 +547,9 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 						data[vi] = c_water
 						under[si] = 0
 						stable[si] = 0
-					elseif densitybase >= triver and density < tstone then -- river water not in fissures
-						if n_temp < ICETET then
+					-- river water not in fissures
+					elseif densitybase >= triver and density < tstone then
+						if n_temp < biomeparams.ICETET then
 							data[vi] = c_wsfreshice
 						else
 							if y == YWAT + 1 then
@@ -516,8 +560,9 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif densitymid >= tstream and density < tstone then -- stream water not in fissures
-						if n_temp < ICETET then
+					-- stream water not in fissures
+					elseif densitymid >= tstream and density < tstone then
+						if n_temp < biomeparams.ICETET then
 							data[vi] = c_wsfreshice
 						else
 							if y == YWAT + 1 then
@@ -528,7 +573,8 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif density < 0 and y >= YWAT and under[si] ~= 0 then -- air above surface node
+					-- air above surface node
+					elseif density < 0 and y >= YWAT and under[si] ~= 0 then
 						local fnoise = n_fissure -- noise for flower colours
 						if under[si] == 1 then
 							data[viu] = c_wsicydirt
@@ -568,7 +614,7 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 									data[vi] = c_grass5
 								end
 							end
-						elseif under[si] == 7 and n_temp < HITET + 0.1 then
+						elseif under[si] == 7 and n_temp < biomeparams.HITET + 0.1 then
 							if math.random(flora.CACCHA) == 2 then
 								watershed_cactus(x, y, z, area, data)
 							elseif math.random(flora.DRYCHA) == 2 then
@@ -594,20 +640,22 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 							end
 						elseif under[si] == 10 then -- dunes
 							if math.random(flora.DUGCHA) == 2 and y > YSAV 
-							and biome >= 4 then
+									and biome >= 4 then
 								data[vi] = c_wsgoldengrass
 							end
-						elseif under[si] == 11 and n_temp > HITET then -- hot biome riverbank
+						elseif under[si] == 11 and n_temp > biomeparams.HITET then -- hot biome riverbank
 							if math.random(flora.PAPCHA) == 2 then
 								watershed_papyrus(x, y, z, area, data)
 							end
-						elseif under[si] == 12
-						and n_humid > LOHUT + (math.random() - 0.5) * BLEND then -- snowy iceberg
+						-- snowy iceberg
+						elseif under[si] == 12 and n_humid > biomeparams.LOHUT +
+								(math.random() - 0.5) * biomeparams.BLEND then
 							data[vi] = c_snowblock
 						end
 						stable[si] = 0
 						under[si] = 0
-					elseif density < 0 and densitymid > TFOG and n_humid > FOGHUT then -- fog
+					elseif density < 0 and densitymid > TFOG and
+							n_humid > biomeparams.FOGHUT then -- fog
 						data[vi] = c_wscloud
 						stable[si] = 0
 						under[si] = 0
@@ -626,7 +674,8 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 						under[si] = 0
 					end
 				elseif y == y1 + 1 then -- plane of nodes above chunk
-					if density < 0 and y >= YWAT and under[si] ~= 0 then -- if air above fine materials
+					-- if air above fine materials
+					if density < 0 and y >= YWAT and under[si] ~= 0 then
 						if under[si] == 1 then -- add surface nodes to chunk top layer
 							data[viu] = c_wsicydirt
 						elseif under[si] == 2 then
@@ -648,7 +697,7 @@ function watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 						end
 					end
 				end
-				nixyz = nixyz + 1 -- increment perlinmap and voxelarea indexes along x row
+				nixyz = nixyz + 1
 				nixz = nixz + 1
 				vi = vi + 1
 				viu = viu + 1
@@ -690,7 +739,7 @@ minetest.register_chatcommand("regen",{
 		local pos1 = {x = x0, y = y0 - 1, z = z0}
 		local pos2 = {x = x1, y = y1 + 1, z = z1}
 		local emin, emax = vm:read_from_map(pos1, pos2)
-		local area = VoxelArea:new({MinEdge=emin, MaxEdge=emax})
+		local area = VoxelArea:new({MinEdge = emin, MaxEdge = emax})
 		local data = vm:get_data()
 
 		watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)	
@@ -700,7 +749,7 @@ minetest.register_chatcommand("regen",{
 		vm:update_map()
 
 		local chugent = math.ceil((os.clock() - t1) * 1000)
-		print ("[watershed] "..chugent.." ms")
+		print ("[watershed] " .. chugent .. " ms")
 	end
 })
 
@@ -720,11 +769,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local x0 = minp.x
 	local y0 = minp.y
 	local z0 = minp.z
-	
-	print ("[watershed] generate mapchunk minp ("..x0.." "..y0.." "..z0..")")
 
 	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
-	local area = VoxelArea:new{MinEdge=emin, MaxEdge=emax}
+	local area = VoxelArea:new{MinEdge = emin, MaxEdge = emax}
 	local data = vm:get_data()
 
 	watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
@@ -735,6 +782,5 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	vm:update_liquids()
 	
 	local chugent = math.ceil((os.clock() - t1) * 1000)
-	print ("[watershed] "..chugent.." ms")
+	print ("[watershed] " .. chugent .. " ms")
 end)
-

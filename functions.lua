@@ -217,9 +217,7 @@ local SINGLENODE = true
 if SINGLENODE then
 	-- Set mapgen parameters
 
-	minetest.register_on_mapgen_init(function(mgparams)
-		minetest.set_mapgen_params({mgname="singlenode", flags="nolight"})
-	end)
+	minetest.set_mapgen_params({mgname = "singlenode", flags = "nolight"})
 
 	-- Spawn player function. Requires chunksize = 80 nodes (the default)
 
@@ -283,10 +281,10 @@ if SINGLENODE then
 			local z1 = z0 + 79
 			local y1 = 47
 			local sidelen = 80
-			local chulensxyz = {x=sidelen, y=sidelen+2, z=sidelen}
-			local chulensxz = {x=sidelen, y=sidelen, z=1}
-			local minposxyz = {x=x0, y=y0-1, z=z0}
-			local minposxz = {x=x0, y=z0}
+			local chulensxyz = {x = sidelen, y = sidelen + 2, z = sidelen}
+			local chulensxz = {x = sidelen, y = sidelen, z = 1}
+			local minposxyz = {x = x0, y = y0 - 1, z = z0}
+			local minposxz = {x = x0, y = z0}
 
 			nobj_terrain = nobj_terrain or minetest.get_perlin_map(np_terrain, chulensxyz)
 			nobj_mid     = nobj_mid     or minetest.get_perlin_map(np_mid, chulensxz)
@@ -340,8 +338,8 @@ if SINGLENODE then
 				break
 			end
 		end
-		print ("[watershed] spawn player ("..xsp.." "..ysp.." "..zsp..")")
-		player:setpos({x=xsp, y=ysp, z=zsp})
+		print ("[watershed] spawn player (" .. xsp .. " " .. ysp .. " " .. zsp .. ")")
+		player:setpos({x = xsp, y = ysp, z = zsp})
 	end
 
 	minetest.register_on_newplayer(function(player)
@@ -363,9 +361,9 @@ minetest.register_abm({
 	neighbors = {"group:water"},
 	interval = 11,
 	chance = 64,
-	action = function(pos, node, active_object_count, active_object_count_wider)
-		minetest.add_node(pos, {name="default:obsidian"})
-		minetest.sound_play("default_cool_lava", {pos = pos,  gain = 0.25})
+	action = function(pos)
+		minetest.add_node(pos, {name = "default:obsidian"})
+		minetest.sound_play("default_cool_lava", {pos = pos, gain = 0.25})
 	end,
 })
 
@@ -380,10 +378,10 @@ minetest.register_abm({
 		local y = pos.y
 		local z = pos.z
 		local vm = minetest.get_voxel_manip()
-		local pos1 = {x=x-2, y=y-2, z=z-2}
-		local pos2 = {x=x+2, y=y+4, z=z+2}
+		local pos1 = {x = x - 2, y = y - 2, z = z - 2}
+		local pos2 = {x = x + 2, y = y + 4, z = z + 2}
 		local emin, emax = vm:read_from_map(pos1, pos2)
-		local area = VoxelArea:new({MinEdge=emin, MaxEdge=emax})
+		local area = VoxelArea:new({MinEdge = emin, MaxEdge = emax})
 		local data = vm:get_data()
 		watershed_appletree(x, y, z, area, data)
 		vm:set_data(data)
@@ -398,15 +396,15 @@ minetest.register_abm({
 	nodenames = {"watershed:pineling"},
 	interval = 59,
 	chance = 3,
-	action = function(pos, node)
+	action = function(pos)
 		local x = pos.x
 		local y = pos.y
 		local z = pos.z
 		local vm = minetest.get_voxel_manip()
-		local pos1 = {x=x-2, y=y-4, z=z-2}
-		local pos2 = {x=x+2, y=y+17, z=z+2}
+		local pos1 = {x = x - 2, y = y - 4, z = z - 2}
+		local pos2 = {x = x + 2, y = y + 17, z = z + 2}
 		local emin, emax = vm:read_from_map(pos1, pos2)
-		local area = VoxelArea:new({MinEdge=emin, MaxEdge=emax})
+		local area = VoxelArea:new({MinEdge = emin, MaxEdge = emax})
 		local data = vm:get_data()
 		watershed_pinetree(x, y, z, area, data)
 		vm:set_data(data)
@@ -421,15 +419,15 @@ minetest.register_abm({
 	nodenames = {"watershed:acacialing"},
 	interval = 61,
 	chance = 3,
-	action = function(pos, node)
+	action = function(pos)
 		local x = pos.x
 		local y = pos.y
 		local z = pos.z
 		local vm = minetest.get_voxel_manip()
-		local pos1 = {x=x-4, y=y-3, z=z-4}
-		local pos2 = {x=x+4, y=y+6, z=z+4}
+		local pos1 = {x = x - 4, y = y - 3, z = z - 4}
+		local pos2 = {x = x + 4, y = y + 6, z = z + 4}
 		local emin, emax = vm:read_from_map(pos1, pos2)
-		local area = VoxelArea:new({MinEdge=emin, MaxEdge=emax})
+		local area = VoxelArea:new({MinEdge = emin, MaxEdge = emax})
 		local data = vm:get_data()
 		watershed_acaciatree(x, y, z, area, data)
 		vm:set_data(data)
@@ -444,15 +442,15 @@ minetest.register_abm({
 	nodenames = {"watershed:jungling"},
 	interval = 63,
 	chance = 3,
-	action = function(pos, node)
+	action = function(pos)
 		local x = pos.x
 		local y = pos.y
 		local z = pos.z
 		local vm = minetest.get_voxel_manip()
-		local pos1 = {x=x-2, y=y-5, z=z-2}
-		local pos2 = {x=x+2, y=y+23, z=z+2}
+		local pos1 = {x = x - 2, y = y - 5, z = z - 2}
+		local pos2 = {x = x + 2, y = y + 23, z = z + 2}
 		local emin, emax = vm:read_from_map(pos1, pos2)
-		local area = VoxelArea:new({MinEdge=emin, MaxEdge=emax})
+		local area = VoxelArea:new({MinEdge = emin, MaxEdge = emax})
 		local data = vm:get_data()
 		watershed_jungletree(x, y, z, area, data)
 		vm:set_data(data)
