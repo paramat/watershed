@@ -1,5 +1,6 @@
 -- Parameters
 
+local SINGLENODE = true -- Use singlenode mapgen and spawnplayer function
 local YMIN = -33000 -- Approximate base of realm stone
 local YMAX = 33000 -- Approximate top of atmosphere / mountains / floatlands
 local TERCEN = -128 -- Terrain zero level, average seabed
@@ -777,6 +778,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 
 	vm:set_data(data)
+	if not SINGLENODE then
+		vm:set_lighting({day = 0, night = 0}) -- remove incorrect precalculated light
+	end
 	vm:calc_lighting()
 	vm:write_to_map(data)
 	vm:update_liquids()
@@ -784,3 +788,111 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	local chugent = math.ceil((os.clock() - t1) * 1000)
 	print ("[watershed] " .. chugent .. " ms")
 end)
+
+
+-- Singlenode option
+
+if SINGLENODE then
+	-- Set mapgen parameters
+
+	minetest.set_mapgen_params({mgname = "singlenode", flags = "nolight"})
+
+
+	-- Spawn player function. Requires chunksize = 80 nodes (the default)
+
+	function spawnplayer(player)
+		local xsp
+		local ysp
+		local zsp
+
+		local nobj_terrain = nil
+		local nobj_mid     = nil
+		local nobj_base    = nil
+		local nobj_xlscale = nil
+
+		local nbuf_terrain
+		local nbuf_mid
+		local nbuf_base
+		local nbuf_xlscale
+
+		for chunk = 1, 128 do
+			print ("[watershed] searching for spawn "..chunk)
+			local x0 = 80 * math.random(-32, 32) - 32
+			local z0 = 80 * math.random(-32, 32) - 32
+			local y0 = -32
+			local x1 = x0 + 79
+			local z1 = z0 + 79
+			local y1 = 47
+			local sidelen = 80
+			local chulensxyz = {x = sidelen, y = sidelen + 2, z = sidelen}
+			local chulensxz = {x = sidelen, y = sidelen, z = 1}
+			local minposxyz = {x = x0, y = y0 - 1, z = z0}
+			local minposxz = {x = x0, y = z0}
+
+			nobj_terrain = nobj_terrain or minetest.get_perlin_map(np_terrain, chulensxyz)
+			nobj_mid     = nobj_mid     or minetest.get_perlin_map(np_mid, chulensxz)
+			nobj_base    = nobj_base    or minetest.get_perlin_map(np_base, chulensxz)
+			nobj_xlscale = nobj_xlscale or minetest.get_perlin_map(np_xlscale, chulensxz)
+
+			local nvals_terrain = nobj_terrain:get3dMap_flat(minposxyz, nbuf_terrain)
+			local nvals_mid     = nobj_mid    :get2dMap_flat(minposxz, nbuf_mid)
+			local nvals_base    = nobj_base   :get2dMap_flat(minposxz, nbuf_base)
+			local nvals_xlscale = nobj_xlscale:get2dMap_flat(minposxz, nbuf_xlscale)
+
+			local nixz = 1
+			local nixyz = 1
+			for z = z0, z1 do
+				for y = y0, y1 do
+					for x = x0, x1 do
+						local n_absterrain = math.abs(nvals_terrain[nixyz])
+						local n_absmid = math.abs(nvals_mid[nixz])
+						local n_absbase = math.abs(nvals_base[nixz])
+						local n_xlscale = nvals_xlscale[nixz]
+						
+						local n_invbase = (1 - n_absbase)
+						local terblen = (math.max(n_invbase, 0)) ^ BLENEXP
+						local grad = math.atan((TERCEN - y) / TERSCA) * ATANAMP
+						local densitybase = n_invbase * BASAMP + n_xlscale * XLSAMP +
+							grad
+						local densitymid = n_absmid * MIDAMP + densitybase
+						local canexp = 0.5 + terblen * 0.5
+						local canamp = terblen * CANAMP
+						local density = n_absterrain ^ canexp * canamp * n_absmid +
+							densitymid
+						
+						if y >= 1 and density > -0.005 and density < 0 then
+							ysp = y + 1
+							xsp = x
+							zsp = z
+							break
+						end
+						nixz = nixz + 1
+						nixyz = nixyz + 1
+					end
+					if ysp then
+						break
+					end
+					nixz = nixz - 80
+				end
+				if ysp then
+					break
+				end
+				nixz = nixz + 80
+			end
+			if ysp then
+				break
+			end
+		end
+		print ("[watershed] spawn player (" .. xsp .. " " .. ysp .. " " .. zsp .. ")")
+		player:setpos({x = xsp, y = ysp, z = zsp})
+	end
+
+	minetest.register_on_newplayer(function(player)
+		spawnplayer(player)
+	end)
+
+	minetest.register_on_respawnplayer(function(player)
+		spawnplayer(player)
+		return true
+	end)
+end
