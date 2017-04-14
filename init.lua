@@ -195,17 +195,22 @@ local nobj_magma   = nil
 
 -- Localise noise buffers
 
-local nbuf_terrain
-local nbuf_fissure
-local nbuf_temp
-local nbuf_humid
-local nbuf_seam
-local nbuf_strata
+local nbuf_terrain = {}
+local nbuf_fissure = {}
+local nbuf_temp = {}
+local nbuf_humid = {}
+local nbuf_seam = {}
+local nbuf_strata = {}
 	
-local nbuf_mid
-local nbuf_base
-local nbuf_xlscale
-local nbuf_magma
+local nbuf_mid = {}
+local nbuf_base = {}
+local nbuf_xlscale = {}
+local nbuf_magma = {}
+
+
+-- Localise data buffer
+
+local dbuf = {}
 
 
 -- Mapchunk generation function
@@ -741,7 +746,7 @@ minetest.register_chatcommand("regen",{
 		local pos2 = {x = x1, y = y1 + 1, z = z1}
 		local emin, emax = vm:read_from_map(pos1, pos2)
 		local area = VoxelArea:new({MinEdge = emin, MaxEdge = emax})
-		local data = vm:get_data()
+		local data = vm:get_data(dbuf)
 
 		watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)	
 
@@ -773,7 +778,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 
 	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
 	local area = VoxelArea:new{MinEdge = emin, MaxEdge = emax}
-	local data = vm:get_data()
+	local data = vm:get_data(dbuf)
 
 	watershed_chunkgen(x0, y0, z0, x1, y1, z1, area, data)
 
